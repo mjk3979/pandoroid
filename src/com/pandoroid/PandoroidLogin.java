@@ -97,7 +97,7 @@ public class PandoroidLogin extends SherlockActivity {
 									 .putString("pandora_username", user_name)
 									 .putString("pandora_password", password)
 									 .commit();
-			m_prefs.edit().putBoolean("pandora_one_flag", true).apply();
+			//m_prefs.edit().putBoolean("pandora_one_flag", true).apply();
 			if(success) {
 				finish();
 			}
