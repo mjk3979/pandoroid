@@ -289,6 +289,7 @@ public class PandoroidPlayer extends SherlockActivity {
 			prefs_edit.remove("pandora_username");
 			prefs_edit.remove("pandora_password");
 			prefs_edit.remove("lastStationId");
+			prefs_edit.remove("pandora_one_flag");
 			prefs_edit.apply();
 			dismissSongHaltedProgress(); 
 			userLogin();
@@ -315,7 +316,7 @@ public class PandoroidPlayer extends SherlockActivity {
 		if (m_partner_login_finished_flag == true) {
 			m_partner_login_finished_flag = false;
 			m_partner_login_task = new PartnerLoginTask();
-			boolean pandora_one_flag = m_prefs.getBoolean("pandora_one_flag", true);
+			boolean pandora_one_flag = m_prefs.getBoolean("pandora_one_flag", false);
 			m_partner_login_task.execute(pandora_one_flag);
 		}
 		else{

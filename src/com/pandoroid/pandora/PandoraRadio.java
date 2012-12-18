@@ -339,30 +339,35 @@ public class PandoraRadio {
 		
 		JSONArray songs_returned = response.getJSONArray("items");
 		for (int i = 0; i < songs_returned.length(); ++i){
-			Map<String, Object> song_data = JSONHelper.toMap(songs_returned.getJSONObject(i));
-			ArrayList<PandoraAudioUrl> audio_url_mappings = new ArrayList<PandoraAudioUrl>();
-			if (song_data.get("additionalAudioUrl") instanceof Vector<?>){
-				Vector<String> audio_urls = (Vector<String>) song_data.get("additionalAudioUrl");
-
-				//This has to be in the same order as the request.
-				audio_url_mappings.add(new PandoraAudioUrl(MP3_128, 128, audio_urls.get(0)));
-				audio_url_mappings.add(new PandoraAudioUrl(AAC_32, 32, audio_urls.get(1)));
-			}
-			//MP3_192 data
-			if (isPandoraOneCredentials()){
+			try{
+				Map<String, Object> song_data = JSONHelper.toMap(songs_returned.getJSONObject(i));
+				ArrayList<PandoraAudioUrl> audio_url_mappings = new ArrayList<PandoraAudioUrl>();
+				if (song_data.get("additionalAudioUrl") instanceof Vector<?>){
+					Vector<String> audio_urls = (Vector<String>) song_data.get("additionalAudioUrl");
+	
+					//This has to be in the same order as the request.
+					audio_url_mappings.add(new PandoraAudioUrl(MP3_128, 128, audio_urls.get(0)));
+					audio_url_mappings.add(new PandoraAudioUrl(AAC_32, 32, audio_urls.get(1)));
+				}
+				//MP3_192 data or AAC_64 based on the credentials
+				if (isPandoraOneCredentials()){
+					audio_url_mappings.add(new PandoraAudioUrl(
+						(Map<String,Object>) (
+							(Map<String,Object>) song_data.get("audioUrlMap")
+							                 ).get("highQuality")
+							                                  ));
+				}
+				//AAC_64 data
 				audio_url_mappings.add(new PandoraAudioUrl(
 					(Map<String,Object>) (
 						(Map<String,Object>) song_data.get("audioUrlMap")
-						                 ).get("highQuality")
-						                                  ));
+						                 ).get("mediumQuality")
+						                                   ));			    
+			    songs.add(new Song(song_data, audio_url_mappings));
 			}
-			//AAC_64 data
-			audio_url_mappings.add(new PandoraAudioUrl(
-				(Map<String,Object>) (
-					(Map<String,Object>) song_data.get("audioUrlMap")
-					                 ).get("mediumQuality")
-					                                   ));			    
-		    songs.add(new Song(song_data, audio_url_mappings));
+			catch (NullPointerException e){
+				//Just ignore the sucker
+			}
 		}
 		
 		this.last_acquired_playlist_time = System.currentTimeMillis() / 1000L;
@@ -479,7 +484,8 @@ public class PandoraRadio {
 	}
 	
 	public boolean isPandoraOneCredentials(){
-		return (credentials.device_model == ONE_DEVICE_ID);
+		return (/*credentials.device_model.equals(ONE_DEVICE_ID)*/
+				credentials.device_model == ONE_DEVICE_ID);
 	}
 	
 	public boolean isPartnerAuthorized(){
