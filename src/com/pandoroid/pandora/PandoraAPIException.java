@@ -1,4 +1,7 @@
-/* This file is part of Pandoroid
+/* 
+ * Pandoroid - An open source Pandora Internet Radio client for Android.
+ * 
+ * Copyright (C) 2012  Dylan Powers <dylan.kyle.powers@gmail.com>
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
