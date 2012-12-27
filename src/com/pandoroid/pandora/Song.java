@@ -1,5 +1,8 @@
-/* Pandoroid Radio - open source pandora.com client for android
+/* 
+ * Pandoroid - An open source Pandora Internet Radio client for Android.
+ * 
  * Copyright (C) 2011  Andrew Regner <andrew@aregner.com>
+ * Copyright (C) 2012  Dylan Powers <dylan.kyle.powers@gmail.com>
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -17,152 +20,164 @@
  */
 package com.pandoroid.pandora;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Vector;
 
 import android.util.Log;
 
+/**
+ * A class heavily related to the Pandora API that holds all song data.
+ * 
+ * @author Andrew Regner <andrew@aregner.com>
+ * @contributor Dylan Powers <dylan.kyle.powers@gmail.com>
+ *
+ */
 public class Song {
-	private String album;
-	private String artist;
-	private String fileGain;
-	private String musicId;
-	private Integer rating;
-	private String stationId;
-	private String title;
-	private String songDetailURL;
-	private String albumDetailURL;
-	private String album_art_url;
-	private boolean tired;
-	private String message;
-	private Object startTime;
-	private boolean finished;
-	private long time_acquired;
-
-	private LinkedList<PandoraAudioUrl> audio_urls;
 	
-	private static final int MAX_TIME_ALIVE = 60 * 60 * 1000; //60 minutes
+	//Normal API stuff
+	private String mAlbum;
+	private String mAlbumArtUrl;
+	private String mAlbumDetailUrl;
+	private boolean mAllowFeedback;
+	private String mArtist;
+	private String mArtistDetailUrl;
+	private String mDetailUrl; 
+	public int rating; //0 for none, (-) for down, (+) for up
+	private long mStationId;
+	private String mTitle;
+	private String mToken;
+	private float mTrackGain;
+	
+	//Extra stuff for us.
+	public long lastFeedbackId;
+	private long mTimeAcquired; //In seconds since UNIX epoch!
+	public boolean tired;
+	
+	private HashMap<String, AudioUrl> mAudioUrls;
+	
+	private static final int MAX_TIME_ALIVE = 60 * 60; //Represented in seconds.
+	
+	//Available formats from Pandora
+	public static final String AAC_32 = "HTTP_32_AACPLUS";
+	public static final String AAC_64 = "HTTP_64_AACPLUS";
+	public static final String MP3_128 = "HTTP_128_MP3";
+	public static final String MP3_192 = "HTTP_192_MP3";
 
-	public Song(){
-		album = "";
-		artist = "";
-		fileGain = "";
-		musicId = "";
-		rating = 0;
-		stationId = "";
-		title = "";
-		songDetailURL = "";
-		albumDetailURL = "";
-		album_art_url = "";			
+	public Song(Map<String, Object> data, Vector<AudioUrl> audioUrls) 
+			   throws ClassCastException, NumberFormatException {
+		mAlbum = (String) data.get("albumName");
+		mAlbumArtUrl = (String) data.get("albumArtUrl");
+		mAlbumDetailUrl = (String) data.get("albumDetailURL");
+		mAllowFeedback = (Boolean) data.get("allowFeedback");
+		mArtist = (String) data.get("artistName");
+		mArtistDetailUrl = (String) data.get("artistDetailUrl");
+		mDetailUrl = (String) data.get("songDetailURL");
+		rating = (Integer) data.get("songRating");
+		mStationId = Long.parseLong((String) data.get("stationId"));
+		mTitle = (String) data.get("songName");
+		mToken = (String) data.get("trackToken");
+		mTrackGain = Float.parseFloat((String) data.get("trackGain"));
 		
-		audio_urls = new LinkedList<PandoraAudioUrl>();		
+		lastFeedbackId = 0;
+		mTimeAcquired = System.currentTimeMillis() * 1000;
 		tired = false;
-		message = "";
-		startTime = null;
-		finished = false;
-		time_acquired = System.currentTimeMillis();
-	}
-
-	public Song(Map<String,Object> d, List<PandoraAudioUrl> audio_urls_in) {		
-		album = (String) d.get("albumName");
-		artist = (String) d.get("artistName");
-		fileGain = (String) d.get("trackGain");
-		musicId = (String) d.get("trackToken");
-		rating = (Integer) d.get("songRating");
-		stationId = (String) d.get("stationId");
-		title = (String) d.get("songName");
-		songDetailURL = (String) d.get("songDetailURL");
-		albumDetailURL = (String) d.get("albumDetailURL");
-		album_art_url = (String) d.get("albumArtUrl");			
 		
-		audio_urls = new LinkedList<PandoraAudioUrl>();
-		
-		//Let's sort the audio_urls from highest to lowest;
-		Collections.sort(audio_urls_in);
-		int i = audio_urls_in.size();
-		while (i > 0){
-			--i;
-			audio_urls.add(audio_urls_in.get(i));
+		mAudioUrls = new HashMap<String, AudioUrl>(audioUrls.size());
+		for (int i = 0; i < audioUrls.size(); ++i){
+			AudioUrl tmp = audioUrls.get(i);
+			mAudioUrls.put(tmp.type, tmp);
 		}
-		
-		tired = false;
-		message = "";
-		startTime = null;
-		finished = false;
-		time_acquired = System.currentTimeMillis();
-	}
-
-	public String getId() {
-		return musicId;
-	}
-
-	public boolean isStillValid() {
-		return (System.currentTimeMillis() - time_acquired) < MAX_TIME_ALIVE;
-	}
-
-
-	
-	public String getAlbumCoverUrl() {
-		return album_art_url;
 	}
 	
 	/**
-	 * Description: Returns a linked list of PandoraAudioUrls sorted from highest
-	 * 	to lowest audio quality.
-	 * @return
+	 * Description: Compares two audio format strings.
+	 * @param value -The value making the comparison.
+	 * @param relative_to -The value being compared to.
+	 * @return An integer that's positive when value is greater than relative_to,
+	 * 	negative when value is less than relative_to, and 0 when they're 
+	 * 	equivalent.
+	 * @throws Exception when the strings are invalid to be making comparisons
+	 * 	against (One or both is not one of the defined constants).
 	 */
-	public LinkedList<PandoraAudioUrl> getSortedAudioUrls(){
-		return this.audio_urls;
-	}
-	
-	public String getAudioUrl(String audio_quality) {
-		ListIterator<PandoraAudioUrl> iter = audio_urls.listIterator();
-		while (iter.hasNext()){
-			PandoraAudioUrl next = iter.next();
-			if (audio_quality.compareTo(next.m_type) == 0){
-				return next.toString();
-			}
+	public static int audioQualityCompare(String value, String relativeTo) throws Exception{
+		int str1Magnitude = getRelativeAudioQualityMagnitude(value);
+		int str2Magnitude = getRelativeAudioQualityMagnitude(relativeTo);
+		if (str1Magnitude != -1 && str2Magnitude != -1){
+			return (str1Magnitude - str2Magnitude);
+		}		
+		else{
+			throw new Exception("Invalid strings to compare");
 		}
-		return null;
 	}
 	
-	public String getTitle() {
-		return title;
+	/**
+	 * Description: Gets what it says.
+	 * @param audioFormatString -A string that consists of the above const.
+	 * @return -A value related to the inputed format string. If the input is
+	 * 	invalid then -1 is output.
+	 */
+	private static int getRelativeAudioQualityMagnitude(String audioFormatString){
+		if (audioFormatString.compareTo(MP3_192) == 0){
+			return 4;
+		}
+		if (audioFormatString.compareTo(MP3_128) == 0){
+			return 3;
+		}
+		if (audioFormatString.compareTo(AAC_64) == 0){
+			return 2;
+		}
+		if (audioFormatString.compareTo(AAC_32) == 0){
+			return 1;
+		}
+		return -1;
+	}
+
+	/**
+	 * Description: Checks to see if a song is still valid. If it is invalid
+	 * 	then a request to the remote server to play the song will not work.
+	 * @return a boolean if true or not.
+	 */
+	public boolean isStillValid() {
+		return (System.currentTimeMillis() * 1000 - mTimeAcquired) < MAX_TIME_ALIVE;
+	}
+	
+	//All of our self explanatory getters.
+	public String getAudioUrl(String audioQuality) {
+		return mAudioUrls.get(audioQuality).urlStr;
+	}	
+	public String getAlbum() {
+		return mAlbum;
+	}
+	public String getAlbumArtUrl() {
+		return mAlbumArtUrl;
+	}	
+	public String getAlbumDetailUrl() {
+		return mAlbumDetailUrl;
+	}
+	public boolean allowFeedback(){
+		return mAllowFeedback;
 	}
 	public String getArtist() {
-		return artist;
+		return mArtist;
 	}
-	public String getAlbum() {
-		return album;
+	public String getArtistDetailUrl(){
+		return mArtistDetailUrl;
+	}	
+	public String getDetailUrl(){
+		return mDetailUrl;
 	}
-	public Integer getRating() {
-		return rating;
+	public long getStationId() {
+		return mStationId;
+	}	
+	public String getTitle() {
+		return mTitle;
 	}
-	public String getFileGain() {
-		return fileGain;
+	public String getToken(){
+		return mToken;
 	}
-	public String getStationId() {
-		return stationId;
+	public float getTrackGain() {
+		return mTrackGain;
 	}
-	public String getSongDetailURL() {
-		return songDetailURL;
-	}
-	public String getAlbumDetailURL() {
-		return albumDetailURL;
-	}
-	public boolean isTired() {
-		return tired;
-	}
-	public String getMessage() {
-		return message;
-	}
-	public Object getStartTime() {
-		return startTime;
-	}
-	public boolean isFinished() {
-		return finished;
-	}
+	//End getters.
 }

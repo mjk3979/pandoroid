@@ -1,6 +1,8 @@
-package com.pandoroid.pandora;
+package com.pandoroid.pandora.RPC;
 
-public class RPCException extends Exception {
+import com.pandoroid.pandora.PandoraAPIException;
+
+public class RPCException extends PandoraAPIException {
 	
 	/**
 	 * Eclipse auto-generated serialVersionUID
@@ -11,6 +13,7 @@ public class RPCException extends Exception {
 	 * See: http://pan-do-ra-api.wikia.com/wiki/Json/5#Error_codes
 	 */
 	//Global
+	//public final static PandoraRPCExceptionCode INTERNAL = new PandoraRPCExceptionCode(0, "Internal");
 	public final static int INTERNAL = 0;
 	public final static int MAINTENANCE_MODE = 1;
 	public final static int URL_PARAM_MISSING_METHOD = 2;
@@ -60,13 +63,30 @@ public class RPCException extends Exception {
 	/* End constants */
 	
 	
-	public int code;
+	private int mCode;
 	public RPCException(int error_code, String message) {
 		super(message);
-		this.code = error_code;
+		mCode = error_code;
 	}
 	
 	public String getMessage(){
-		return (super.getMessage() + " (Code: " + Integer.toString(code) + ")");
+		return (super.getMessage() + " (Code: " + Integer.toString(mCode) + ")");
 	}
+	
+	public int getCode(){
+		return mCode;
+	}
+	
+//	private PandoraRPCExceptionCode getCode(int code){
+//		
+//	}
+	
+//	public static class PandoraRPCExceptionCode{
+//		public final int code;
+//		public final String message;
+//		PandoraRPCExceptionCode(int code, String message){
+//			this.code = code;
+//			this.message = message;
+//		}
+//	}
 }

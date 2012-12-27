@@ -14,24 +14,29 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 package com.pandoroid.pandora;
 
 /**
- * Description: An exception for when an improper subscriber type has been
- * 	detected.
+ * Description: A handy little exception class for stating that THE API IS BROKEN! 
+ * 	yup =)
  * 
  * @author Dylan Powers <dylan.kyle.powers@gmail.com>
  *
  */
-public class SubscriberTypeException extends Exception {
-	
-	// Auto-generated serialVersionUID
-	private static final long serialVersionUID = -4684797455074629555L;
-	
-	public boolean isPandoraOne;
-	public SubscriberTypeException(boolean isTypePandoraOne, String message){
+public class PandoraAPIModifiedException extends PandoraAPIException{
+
+	private static final long serialVersionUID = 7787891447155883573L;
+
+	public PandoraAPIModifiedException(String message){
 		super(message);
-		isPandoraOne = isTypePandoraOne;
 	}
+	
+	public PandoraAPIModifiedException(Throwable e){
+		super(e);
+	}
+	
+	public PandoraAPIModifiedException(String message, Throwable e){
+		super(message, e);
+	}
+
 }

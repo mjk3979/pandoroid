@@ -14,7 +14,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package com.pandoroid.pandora;
+package com.pandoroid.JSON;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -23,16 +23,21 @@ import java.util.Vector;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/*
+/**
  * Description: An abstract class for a logical organization of the following
  *  two functions.
+ *  
+ *  @author Dylan Powers <dylan.kyle.powers@gmail.com>
  */
 public abstract class JSONHelper {
 
-	/*
+	/**
 	 * Description: I have no clue why the JSON object doesn't implement this
 	 * 	within itself. It seems so logical to do so, but here's my
-	 * 	implementation, and it seems very darn complete to me. --Dylan Powers
+	 * 	implementation, and it seems very darn complete to me. Just remember
+	 * 	to watch your type casts! --Dylan Powers
+	 * @param object -A JSONObject to convert.
+	 * @return A JSONObject in a generic key-value Map implementation
 	 */
 	public static Map<String, Object> toMap(JSONObject object){
 		Map<String, Object> mapping = new HashMap<String, Object>();
@@ -63,8 +68,10 @@ public abstract class JSONHelper {
         return mapping;
 	}
 	
-	/*
+	/**
 	 * Description: Same as above except for JSONArrays.
+	 * @param object -A JSONArray to convert.
+	 * @return A vector implementation of a JSONArray.
 	 */
 	public static Vector<Object> toVector(JSONArray object){
 		Vector<Object> array = new Vector<Object>();

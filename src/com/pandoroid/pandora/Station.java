@@ -1,5 +1,8 @@
-/* Pandoroid Radio - open source pandora.com client for android
+/* 
+ * Pandoroid - An open source Pandora Internet Radio client for Android.
+ * 
  * Copyright (C) 2011  Andrew Regner <andrew@aregner.com>
+ * Copyright (C) 2012  Dylan Powers <dylan.kyle.powers@gmail.com>
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,98 +21,61 @@
 package com.pandoroid.pandora;
 
 import java.io.Serializable;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 
 import android.util.Log;
 
-
-public class Station implements Comparable<Station>, Serializable {
-	private static final long serialVersionUID = 1L;
+/**
+ * Description: Station information as given by Pandora.
+ * 
+ * @author Andrew Regner <andrew@aregner.com>
+ * @contributor Dylan Powers <dylan.kyle.powers@gmail.com>
+ *
+ */
+public class Station {
 	
-	private String id;
-	private String idToken;
-	//private boolean isCreator;
-	private boolean isQuickMix;
-	private String name;
-
-	transient private Song[] currentPlaylist;
-	//transient private boolean useQuickMix;
-	transient private PandoraRadio pandora;
-
-	public Station(HashMap<String, Object> d, PandoraRadio instance) {
-		id = (String) d.get("stationId");
-		idToken = (String) d.get("stationIdToken");
-		//isCreator = (Boolean) d.get("isCreator");
-		isQuickMix = (Boolean) d.get("isQuickMix");
-		name = (String) d.get("stationName");
-
-		pandora = instance;
-		//useQuickMix = false;
-	}
+	private long mId; //The id and token are currently implemented by Pandora
+	private String mToken; // as being essentially the same thing.
 	
-	public Song[] getPlaylist(boolean forceDownload) {
-		return getPlaylist(PandoraRadio.DEFAULT_AUDIO_FORMAT, forceDownload);
-	}
-	
-	public Song[] getPlaylist(String format, boolean forceDownload) {
-		if(forceDownload || currentPlaylist == null) {
-			return getPlaylist();
-		}
-		else {
-			return currentPlaylist;
-		}
-	}
+	private boolean mAllowAddMusic;
+	private boolean mAllowRename;
+	private String mDetailUrl;
+	private boolean mIsQuickMix;
+	private String mName;
 
-	public Song[] getPlaylist() {		
+
+	public Station(Map<String, Object> data) throws ClassCastException,
+		                                            NumberFormatException{
+		mId = Long.parseLong((String) data.get("stationId"));
+		mToken = (String) data.get("stationIdToken");
 		
-		try{
-			Vector<Song> result = pandora.getPlaylist(idToken);
-			Song[] list = new Song[result.size()];
-			result.copyInto(list);
-			currentPlaylist = list;
-		}
-		catch (Exception e){
-			Log.e("Pandoroid","Exception getting playlist",e);
-		}
-
-		return currentPlaylist;
+		mAllowAddMusic = (Boolean) data.get("allowAddMusic");
+		mAllowRename = (Boolean) data.get("allowRename");
+		mDetailUrl = (String) data.get("detailUrl");
+		mIsQuickMix = (Boolean) data.get("isQuickMix");
+		mName = (String) data.get("stationName");
 	}
 
+	public boolean allowAddMusic(){
+		return mAllowAddMusic;
+	}
+	public boolean allowRename(){
+		return mAllowRename;
+	}
+	public String getDetailUrl(){
+		return mDetailUrl;
+	}	
+	public long getId() {
+		return mId;
+	}
 	public String getName() {
-		return name;
+		return mName;
 	}
-
-	public String getStationImageUrl() {
-		getPlaylist(false);
-		return currentPlaylist[0].getAlbumCoverUrl();
-	}
-	
-	public int compareTo(Station another) {
-		return getName().compareTo(another.getName());
-	}
-	
-	public int compareTo(String id){
-		return getStationId().compareTo(id);
-	}
-	
-	public boolean equals(Station another) {
-		return getName().equals(another.getName());
-	}
-
-	public String getStationId() {
-		return id;
-	}
-
-	public String getStationIdToken() {
-		return idToken;
-	}
-
-//	public boolean isCreator() {
-//		return isCreator;
-//	}
-
 	public boolean isQuickMix() {
-		return isQuickMix;
+		return mIsQuickMix;
+	}
+	public String getToken() {
+		return mToken;
 	}
 }
