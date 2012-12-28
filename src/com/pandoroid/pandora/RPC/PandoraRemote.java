@@ -43,7 +43,7 @@ import com.pandoroid.pandora.SubscriberTypeException;
  *  
  * @author Dylan Powers <dylan.kyle.powers@gmail.com>
  */
-public class PandoraRPC extends JsonRPC{
+public class PandoraRemote extends JsonRPC{
 	
 	public static final long PLAYLIST_VALIDITY_TIME = 3600 * 3;
 	public static final String DEFAULT_AUDIO_FORMAT = "aacplus";
@@ -52,7 +52,7 @@ public class PandoraRPC extends JsonRPC{
 	private String mUserAuthToken;
 	private String mPartnerAuthToken;
 
-	public PandoraRPC(boolean pandoraOneFlag, String userAgent) 
+	public PandoraRemote(boolean pandoraOneFlag, String userAgent) 
 			         throws GeneralSecurityException{
 		super(pandoraOneFlag, userAgent);			
 	}
