@@ -60,7 +60,7 @@ public class PandoraRemote extends JsonRPC{
 	private String mPartnerAuthToken;
 
 	public PandoraRemote(boolean pandoraOneFlag, String userAgent) 
-			         throws GeneralSecurityException{
+	                    throws GeneralSecurityException{
 		super(pandoraOneFlag, userAgent);			
 	}
 	
@@ -101,12 +101,12 @@ public class PandoraRemote extends JsonRPC{
 	 * @throws Exception when an unexpected fatal error occurs.
 	 */
 	public Vector<Song> getPlaylist(String stationToken) 
-			                       throws RPCException,
-							       IOException,
-							       HttpResponseException,
-							       PandoraAPIModifiedException,
-							       PandoraAPIException,
-							       Exception{		
+	                               throws RPCException,
+	                                      IOException,
+	                                      HttpResponseException,
+	                                      PandoraAPIModifiedException,
+	                                      PandoraAPIException,
+	                                      Exception{		
 		if (!isUserAuthorized()){
 			throw new PandoraAPIException("Improper call to getPlaylist(), " +
 					                      "the user has not been logged in yet.");
@@ -156,11 +156,11 @@ public class PandoraRemote extends JsonRPC{
 	 */
 	@SuppressWarnings("unchecked")
 	public Vector<Station> getStations() throws RPCException,
-											    IOException,
-											    HttpResponseException, 
-											    PandoraAPIModifiedException,
-											    PandoraAPIException,
-											    Exception{
+	                                            IOException,
+	                                            HttpResponseException, 
+	                                            PandoraAPIModifiedException,
+	                                            PandoraAPIException,
+	                                            Exception{
 		if (!isUserAuthorized()){
 			throw new PandoraAPIException("Improper call to getStations(), " +
 					                      "the user has not been logged in yet.");
@@ -231,8 +231,8 @@ public class PandoraRemote extends JsonRPC{
 	 */
 	@SuppressWarnings("unchecked")
 	private <T> T keyGetCast(Map<String, Object> map, String key) 
-			                throws PandoraAPIModifiedException,
-			                       ClassCastException{
+	                        throws PandoraAPIModifiedException,
+	                               ClassCastException{
 		T value = (T) map.get(key);
 		if (value == null){
 			throw new PandoraAPIModifiedException(
@@ -251,8 +251,8 @@ public class PandoraRemote extends JsonRPC{
 	 */
 	@SuppressWarnings("unchecked")
 	private Vector<Song> parseItems(Vector<Object> items)
-			                       throws PandoraAPIModifiedException, 
-			                              ClassCastException{
+	                               throws PandoraAPIModifiedException, 
+	                                      ClassCastException{
 		Vector<Song> songs = new Vector<Song>();
 		
 		for (int i = 0; i < items.size(); ++i){
@@ -297,10 +297,10 @@ public class PandoraRemote extends JsonRPC{
 	 * @throws Exception for any most likely fatal uncaught extraneous errors.
 	 */
 	public void partnerLogIn() throws RPCException,
-								       IOException,
-								       HttpResponseException,
-								       PandoraAPIModifiedException,
-								       Exception{
+	                                  IOException,
+	                                  HttpResponseException,
+	                                  PandoraAPIModifiedException,
+	                                  Exception{
 		Map<String, Object> partnerParams = new HashMap<String, Object>(4);
 		partnerParams.put("username", mCredentials.username);
 		partnerParams.put("password", mCredentials.password);
@@ -333,8 +333,8 @@ public class PandoraRemote extends JsonRPC{
 	 * @throws Exception for any most likely fatal uncaught extraneous errors.
 	 */
 	public long rate(String trackToken, boolean isPositiveRating) 
-			         throws RPCException, IOException, HttpResponseException,
-				            PandoraAPIModifiedException, Exception{		
+	                throws RPCException, IOException, HttpResponseException,
+	                       PandoraAPIModifiedException, Exception{		
 		if (!isUserAuthorized()){
 			throw new PandoraAPIException("Improper call to rate(), " +
                       "the user has not been logged in yet.");
@@ -386,10 +386,10 @@ public class PandoraRemote extends JsonRPC{
 	 * @throws Exception when an irrecoverable error has occurred.
 	 */
 	public void userLogIn(String user, String password) 
-		                  throws RPCException, SubscriberTypeException,
-		                         IOException, HttpResponseException, 
-		                         PandoraAPIException, 
-		                         PandoraAPIModifiedException, Exception {
+	                     throws RPCException, SubscriberTypeException,
+	                            IOException, HttpResponseException, 
+	                            PandoraAPIException, 
+	                            PandoraAPIModifiedException, Exception {
 		if (!isPartnerAuthorized()){
 			throw new PandoraAPIException("Improper call to userLogIn(), " +
 					                      "the application is not authorized.");
