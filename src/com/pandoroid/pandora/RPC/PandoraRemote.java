@@ -40,8 +40,15 @@ import com.pandoroid.pandora.SubscriberTypeException;
  * Description: Uses Pandora's JSON v5 API. Documentation of the JSON API
  * 	can be found here: http://pan-do-ra-api.wikia.com/wiki/Json/5 
  *  A network connection is required before any operation can/should take place.
+ * Basic Call Order: 
+ *  1) partnerLogIn();
+ *  2) userLogIn(String username/email, String password);
+ *  3) Vector<Station> yourStations = getStations();
+ *  4) Vector<Song> playlist = getPlaylist(String userSelectedStationToken);
+ *  5) Others...
  *  
  * @author Dylan Powers <dylan.kyle.powers@gmail.com>
+ * 
  */
 public class PandoraRemote extends JsonRPC{
 	
@@ -78,93 +85,35 @@ public class PandoraRemote extends JsonRPC{
 		
 		//doCall("station.createBookmark", args, null);
 	//}
-	                                
-
-	
-	/**
-	 * Description: Logs a user in.
-	 * @param user -The user's username.
-	 * @param password -The user's password.
-	 * @throws RPCException when a Pandora RPC error occurs.
-	 * @throws SubscriberTypeException when a Pandora user is identified as not
-	 * 	being the expected subscriber type.
-	 * @throws IOException when Pandora's servers can't be reached.
-	 * @throws HttpResponseException when an unexpected HTTP response occurs.
-	 * @throws PandoraAPIException when an improper call has been made to the function.
-	 * @throws PandoraAPIModifiedException when the API has changed on the server side.
-	 * @throws Exception when an irrecoverable error has occurred.
-	 */
-	public void userLogIn(String user, String password) 
-		                  throws RPCException, SubscriberTypeException,
-		                         IOException, HttpResponseException, 
-		                         PandoraAPIException, 
-		                         PandoraAPIModifiedException, Exception {
-		if (!isPartnerAuthorized()){
-			throw new PandoraAPIException("Improper call to connect(), " +
-					                      "the application is not authorized.");
-		}
-		
-		HashMap<String, Object> request_args = new HashMap<String, Object>(4);
-		request_args.put("loginType", "user");
-		request_args.put("username", user);
-		request_args.put("password", password);
-		request_args.put("partnerAuthToken", mPartnerAuthToken);
-		
-		Map<String, Object> result = doCall("auth.userLogin", request_args, 
-				                        	true, true, null);
-		
-		Boolean hasAudioAds = (Boolean) result.get("hasAudioAds");
-		if (hasAudioAds == null){
-			throw new PandoraAPIModifiedException("Invalid RPC response result.");
-		}
-		
-		//If this is a PandoraOne subscriber and the credentials aren't correct
-		if (!hasAudioAds && !isPandoraOneCredentials()){
-			throw new SubscriberTypeException(true, 
-				"The subscriber is Pandora One and default device credentials were given.");
-		} 
-		// Please note that if we are using Pandora One credentials, 
-		// it is impossible to see if the opposite is true.
-		else{
-			String userAuthToken = (String) result.get("userAuthToken");
-			String userId = (String) result.get("userId");
-			if (userAuthToken == null || userId == null){
-				throw new PandoraAPIModifiedException("Invalid RPC response result.");
-			}
-			mStandardURLParams.put("auth_token", userAuthToken);
-			mStandardURLParams.put("user_id", userId);
-		}
-	}	
 	
 	/**
 	 * Description: Gets a list of songs to be played. This function should not
 	 * 	be called on a particular station more frequently than 
 	 * 	MIN_TIME_BETWEEN_PLAYLIST_CALLS allows or an error will result.
-	 * @param station_token -A string representing the station's unique 
+	 * @param stationToken -A string representing the station's unique 
 	 * 	identification token.
 	 * @return a vector of songs.
 	 * @throws RPCException when a Pandora RPC error has occurred.
 	 * @throws IOException when Pandora's remote servers could not be reached.
 	 * @throws HttpResponseException when an unexpected HTTP response occurs.
-	 * @throws PandoraAPIModifiedException
-	 * @throws PandoraAPIException
+	 * @throws PandoraAPIModifiedException if the API appears to have been modified.
+	 * @throws PandoraAPIException when an improper call has been made to the method.
 	 * @throws Exception when an unexpected fatal error occurs.
 	 */
-	public Vector<Song> getPlaylist(String station_token) 
+	public Vector<Song> getPlaylist(String stationToken) 
 			                       throws RPCException,
 							       IOException,
 							       HttpResponseException,
 							       PandoraAPIModifiedException,
 							       PandoraAPIException,
-							       Exception{
-		
+							       Exception{		
 		if (!isUserAuthorized()){
 			throw new PandoraAPIException("Improper call to getPlaylist(), " +
 					                      "the user has not been logged in yet.");
 		}
 
 		HashMap<String, Object> requestArgs = new HashMap<String, Object>(3);
-		requestArgs.put("stationToken", station_token);
+		requestArgs.put("stationToken", stationToken);
 		requestArgs.put("userAuthToken", mUserAuthToken);
 		
 		//Order matters in this request. The same order given here is 
@@ -262,11 +211,11 @@ public class PandoraRemote extends JsonRPC{
 		return mCredentials.isPandoraOne();
 	}
 	
-	public boolean isPartnerAuthorized(){
+	private boolean isPartnerAuthorized(){
 		return (mPartnerAuthToken != null);
 	}
 	
-	public boolean isUserAuthorized(){
+	private boolean isUserAuthorized(){
 		return (mUserAuthToken != null);
 	}
 	
@@ -347,7 +296,7 @@ public class PandoraRemote extends JsonRPC{
 	 * @throws PandoraAPIModifiedException if the API appears to have been modified.
 	 * @throws Exception for any most likely fatal uncaught extraneous errors.
 	 */
-	private void partnerLogin() throws RPCException,
+	public void partnerLogIn() throws RPCException,
 								       IOException,
 								       HttpResponseException,
 								       PandoraAPIModifiedException,
@@ -385,7 +334,12 @@ public class PandoraRemote extends JsonRPC{
 	 */
 	public long rate(String trackToken, boolean isPositiveRating) 
 			         throws RPCException, IOException, HttpResponseException,
-				            PandoraAPIModifiedException, Exception{
+				            PandoraAPIModifiedException, Exception{		
+		if (!isUserAuthorized()){
+			throw new PandoraAPIException("Improper call to rate(), " +
+                      "the user has not been logged in yet.");
+		}
+		
 		Map<String, Object> feedbackParams = new HashMap<String, Object>(3);
 		feedbackParams.put("trackToken", trackToken);
 		feedbackParams.put("isPositive", isPositiveRating);
@@ -417,4 +371,59 @@ public class PandoraRemote extends JsonRPC{
 //		
 //		//doCall("listener.addTiredSong", args, null);
 //	}
+	
+	/**
+	 * Description: Logs a user in.
+	 * @param user -The user's username.
+	 * @param password -The user's password.
+	 * @throws RPCException when a Pandora RPC error occurs.
+	 * @throws SubscriberTypeException when a Pandora user is identified as not
+	 * 	being the expected subscriber type.
+	 * @throws IOException when Pandora's servers can't be reached.
+	 * @throws HttpResponseException when an unexpected HTTP response occurs.
+	 * @throws PandoraAPIException when an improper call has been made to the function.
+	 * @throws PandoraAPIModifiedException when the API has changed on the server side.
+	 * @throws Exception when an irrecoverable error has occurred.
+	 */
+	public void userLogIn(String user, String password) 
+		                  throws RPCException, SubscriberTypeException,
+		                         IOException, HttpResponseException, 
+		                         PandoraAPIException, 
+		                         PandoraAPIModifiedException, Exception {
+		if (!isPartnerAuthorized()){
+			throw new PandoraAPIException("Improper call to userLogIn(), " +
+					                      "the application is not authorized.");
+		}
+		
+		HashMap<String, Object> request_args = new HashMap<String, Object>(4);
+		request_args.put("loginType", "user");
+		request_args.put("username", user);
+		request_args.put("password", password);
+		request_args.put("partnerAuthToken", mPartnerAuthToken);
+		
+		Map<String, Object> result = doCall("auth.userLogin", request_args, 
+				                        	true, true, null);
+		
+		Boolean hasAudioAds = (Boolean) result.get("hasAudioAds");
+		if (hasAudioAds == null){
+			throw new PandoraAPIModifiedException("Invalid RPC response result.");
+		}
+		
+		//If this is a PandoraOne subscriber and the credentials aren't correct
+		if (!hasAudioAds && !isPandoraOneCredentials()){
+			throw new SubscriberTypeException(true, 
+				"The subscriber is Pandora One and default device credentials were given.");
+		} 
+		// Please note that if we are using Pandora One credentials, 
+		// it is impossible to see if the opposite is true.
+		else{
+			String userAuthToken = (String) result.get("userAuthToken");
+			String userId = (String) result.get("userId");
+			if (userAuthToken == null || userId == null){
+				throw new PandoraAPIModifiedException("Invalid RPC response result.");
+			}
+			mStandardURLParams.put("auth_token", userAuthToken);
+			mStandardURLParams.put("user_id", userId);
+		}
+	}
 }
