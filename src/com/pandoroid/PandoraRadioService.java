@@ -326,15 +326,24 @@ public class PandoraRadioService extends Service {
 	
 
 	
-	public void playPause(){
+	/**
+	 * Plays the song if it is paused or vice versa.
+	 *
+	 * @return True iff the song is playing after the call finishes (i.e. the
+	 * song was paused before the call), otherwise false.
+	 **/
+	public boolean playPause(){
 		if (m_song_playback != null){
 			if (!m_paused){
 				pause();
+				return false;
 			}
 			else{
 				play();
+				return true;
 			}
 		}
+		return false;
 	}
 
 	private void play() {
