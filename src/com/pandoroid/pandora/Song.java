@@ -141,6 +141,9 @@ public class Song {
 	public Integer getRating() {
 		return rating;
 	}
+	public boolean isFavorite() {
+		return rating == 1;
+	}
 	public String getFileGain() {
 		return fileGain;
 	}

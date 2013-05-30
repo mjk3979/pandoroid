@@ -418,6 +418,13 @@ public class PandoroidPlayer extends SherlockActivity {
 			getSupportActionBar().setTitle(String.format("" + song.getTitle()));
 			m_service.image_downloader.download(song.getAlbumCoverUrl(), image);
 			top.setText(String.format("%s\n%s", song.getArtist(), song.getAlbum()));
+
+			// Change star depending on whether this song is a favorite
+			ImageView favoriteStar = (ImageView) findViewById(R.id.player_love);
+			if (song.isFavorite())
+				favoriteStar.setImageResource(R.drawable.ic_menu_stared);
+			else
+				favoriteStar.setImageResource(R.drawable.ic_menu_star);
 		}
 		else{
 			image.setImageResource(R.drawable.transparent);
