@@ -1,7 +1,7 @@
 /* 
  * Pandoroid - An open source Pandora Internet Radio client for Android.
  * 
- * Copyright (C) 2012  Dylan Powers <dylan.kyle.powers@gmail.com>
+ * Copyright (C) 2013  Dylan Powers <dylan.kyle.powers@gmail.com>
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,15 +22,18 @@ package com.pandoroid.service;
 import java.util.Vector;
 
 import com.pandoroid.pandora.Song;
-import com.pandoroid.pandora.Station;
+import com.pandoroid.pandora.StationMetaInfo;
 import com.pandoroid.pandora.RPC.PandoraRemote;
 
 import android.annotation.TargetApi;
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Build;
 
 /**
- * Description: This is a class of static operations to run asynchronous 
+ * Description: This is a class of operations to run asynchronous 
  * 	PandoraRemote tasks. The general idea behind the operations here is to
  * 	extend the AsyncTask construct to make calls less messy and more simplified.
  * 
@@ -38,7 +41,17 @@ import android.os.Build;
  *
  */
 public class RPCAsyncTasks{
-	private static PandoraRemote mRemote;
+	public enum Progress{
+		NO_NETWORK, CONNECTING 
+	}
+	
+	private ConnectivityManager mConnectivity;
+	private PandoraRemote mRemote;
+	
+	public RPCAsyncTasks(PandoraRemote remote, ConnectivityManager connectivity){
+		mRemote = remote;
+		mConnectivity = connectivity;
+	}
 	
 	/**
 	 * Description: Runs an asynchronous getPlaylist call. 
@@ -46,11 +59,13 @@ public class RPCAsyncTasks{
 	 * @param stationToken
 	 * @param taskClass
 	 */
-	public static void getPlaylist(String stationToken, final PostTask<Vector<Song>> taskClass){
+	public AsyncTask<String, Progress, Vector<Song>> getPlaylist(String stationToken, 
+			                                                     final PostTask<Vector<Song>> taskClass){
 		RPCAsyncTask<String, Vector<Song>> task = new RPCAsyncTask<String, Vector<Song>>(taskClass){
 			protected Vector<Song> doInBackground(String... params){
 				Vector<Song> songs = null;
 				try {
+					networkConnectWait();
 					songs = mRemote.getPlaylist(params[0]);
 				} catch (Exception e) {
 					mCaughtException = e;
@@ -59,9 +74,8 @@ public class RPCAsyncTasks{
 				return songs;
 			}
 		};
-
 		
-		task.executeOverride(stationToken);
+		return task.executeOverride(stationToken);
 	}
 	
 	/**
@@ -69,11 +83,12 @@ public class RPCAsyncTasks{
 	 * 	See {@link PandoraRemote#getStations()}
 	 * @param taskClass
 	 */
-	public static void getStations(final PostTask<Vector<Station>> taskClass){
-		RPCAsyncTask<Void, Vector<Station>> task = new RPCAsyncTask<Void, Vector<Station>>(taskClass){
-			protected Vector<Station> doInBackground(Void... params){
-				Vector<Station> stations = null;
+	public AsyncTask<Void, Progress, Vector<StationMetaInfo>> getStations(final PostTask<Vector<StationMetaInfo>> taskClass){
+		RPCAsyncTask<Void, Vector<StationMetaInfo>> task = new RPCAsyncTask<Void, Vector<StationMetaInfo>>(taskClass){
+			protected Vector<StationMetaInfo> doInBackground(Void... params){
+				Vector<StationMetaInfo> stations = null;
 				try{
+					networkConnectWait();
 					stations = mRemote.getStations();
 				}
 				catch (Exception e){
@@ -84,18 +99,19 @@ public class RPCAsyncTasks{
 			}
 		};
 		
-		task.executeOverride();
+		return task.executeOverride();
 	}
-	
+		
 	/**
 	 * Description: Runs an asynchronous partnerLogIn call.
 	 * 	See {@link PandoraRemote#partnerLogIn()}
 	 * @param taskClass
 	 */
-	public static void partnerLogIn(final PostTask<Void> taskClass){
+	public AsyncTask<Void, Progress, Void> partnerLogIn(final PostTask<Void> taskClass){
 		RPCAsyncTask<Void, Void> task = new RPCAsyncTask<Void, Void>(taskClass){
 			protected Void doInBackground(Void... params){
 				try{
+					networkConnectWait();
 					mRemote.partnerLogIn();
 				}
 				catch (Exception e){
@@ -106,7 +122,7 @@ public class RPCAsyncTasks{
 			}
 		};
 		
-		task.executeOverride();
+		return task.executeOverride();
 	}
 	
 	/**
@@ -116,15 +132,16 @@ public class RPCAsyncTasks{
 	 * @param isPositiveRating
 	 * @param taskClass
 	 */
-	public static void rate(String trackToken, 
-			                boolean isPositiveRating, 
-			                final PostTask<Long> taskClass){
+	public AsyncTask<Object, Progress, Long> rate(String trackToken, 
+			                                      boolean isRatingPositive, 
+			                                      final PostTask<Long> taskClass){
 		RPCAsyncTask<Object, Long> task = new RPCAsyncTask<Object, Long>(taskClass){
 			protected Long doInBackground(Object... params){
 				String trackToken = (String) params[0];
 				Boolean isPositive = (Boolean) params[1];
 				Long feedbackId = null;
 				try{
+					networkConnectWait();
 					feedbackId = mRemote.rate(trackToken, isPositive);
 				}
 				catch (Exception e){
@@ -135,7 +152,7 @@ public class RPCAsyncTasks{
 			}
 		};
 		
-		task.executeOverride(trackToken, isPositiveRating);
+		return task.executeOverride(trackToken, isRatingPositive);
 	}
 	
 	/**
@@ -145,10 +162,10 @@ public class RPCAsyncTasks{
 	 * 	the first time (null pointer exceptions will ensue if not).
 	 * @param remote -An instance of a PandoraRemote.
 	 */
-	public static void setRemote(PandoraRemote remote){
+	public void setRemote(PandoraRemote remote){
 		mRemote = remote;
 	}
-
+	
 	/**
 	 * Description: Runs an asynchronous userLogIn call.
 	 * 	See {@link PandoraRemote#userLogIn(String, String)}
@@ -156,10 +173,13 @@ public class RPCAsyncTasks{
 	 * @param password
 	 * @param taskClass
 	 */
-	public static void userLogIn(String user, String password, final PostTask<Void> taskClass){
+	public AsyncTask<String, Progress, Void> userLogIn(String user, 
+			                                           String password, 
+			                                           final PostTask<Void> taskClass){
 		RPCAsyncTask<String, Void> task = new RPCAsyncTask<String, Void>(taskClass){
 			protected Void doInBackground(String... params) {
 				try {
+					networkConnectWait();
 					mRemote.userLogIn(params[0], params[1]);
 				} catch (Exception e) {
 					mCaughtException = e;
@@ -168,7 +188,7 @@ public class RPCAsyncTasks{
 			}
 		};
 		
-		task.executeOverride(user, password);
+		return task.executeOverride(user, password);
 	}
 
 	/**
@@ -182,17 +202,28 @@ public class RPCAsyncTasks{
 	 */
 	public abstract static class PostTask<ReturnType>{
 		public abstract void onException(Exception e);
+		
+		/**
+		 * Description: Only called when execution successfully completed, and
+		 * 	no exceptions were thrown.
+		 * 
+		 * @param arg
+		 */
 		public abstract void onPostExecute(ReturnType arg);
+		
+		@SuppressWarnings("unused")
+		public void onProgressUpdate(Progress progress){} //Optional method
 	}
 	
 	/**
 	 * Description: This is the base class implemented by the methods in this 
 	 * 	class. For implementing new methods use this format:
-	 * 	public static void newMethod(...rpc-params..., PostTask<rpc-return-type>){
+	 * 	public static RPCAsyncTask newMethod(...rpc-params..., PostTask<rpc-return-type>){
 	 * 		RPCAsyncTask<rpc-params-type, rpc-return-type> task = new RPCA...etc.{
 	 * 			protected Void doInBackground(etc...
 	 * 		};
 	 * 		task.executeOverride(...rpc-params...);
+	 * 		return task;
 	 * 	}
 	 * 
 	 * @author Dylan Powers <dylan.kyle.powers@gmail.com>
@@ -200,8 +231,8 @@ public class RPCAsyncTasks{
 	 * @param <Params>
 	 * @param <ReturnType>
 	 */
-	private abstract static class RPCAsyncTask<Params, ReturnType>
-	                              extends AsyncTask<Params, Void, ReturnType>{
+	private abstract class RPCAsyncTask<Params, ReturnType>
+	                              extends AsyncTask<Params, Progress, ReturnType>{
 		protected Exception mCaughtException;
 		private PostTask<ReturnType> mTaskClass;
 		
@@ -220,13 +251,25 @@ public class RPCAsyncTasks{
 		 * @return
 		 */
 		@TargetApi(11)
-		public final AsyncTask<Params, Void, ReturnType> executeOverride(Params... params){
-			if (Build.VERSION.SDK_INT >= 11){
+		public final AsyncTask<Params, Progress, ReturnType> executeOverride(Params... params){
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB){
 				return super.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, params);
 			}
 			else{
 				return super.execute(params);
 			}
+		}
+		
+		protected void networkConnectWait(){
+			NetworkInfo activeNet = mConnectivity.getActiveNetworkInfo();
+			while(activeNet == null || !activeNet.isConnected()){
+				publishProgress(Progress.NO_NETWORK);
+				try {
+					wait(1 * 1000); // Sleep 1 second then try again
+				} catch (InterruptedException e) {/*We don't care*/}
+				activeNet = mConnectivity.getActiveNetworkInfo();
+			}
+			publishProgress(Progress.CONNECTING);
 		}
 		
 		protected void onPostExecute(ReturnType ret){
@@ -236,7 +279,11 @@ public class RPCAsyncTasks{
 			else{
 				mTaskClass.onPostExecute(ret);
 			}
-		}		
+		}	
+		
+		protected void onProgressUpdate(Progress prog){
+			mTaskClass.onProgressUpdate(prog);
+		}
 	}
 }
 

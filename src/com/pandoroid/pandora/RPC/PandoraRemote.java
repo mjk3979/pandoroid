@@ -32,7 +32,7 @@ import com.pandoroid.pandora.AudioUrl;
 import com.pandoroid.pandora.PandoraAPIException;
 import com.pandoroid.pandora.PandoraAPIModifiedException;
 import com.pandoroid.pandora.Song;
-import com.pandoroid.pandora.Station;
+import com.pandoroid.pandora.StationMetaInfo;
 import com.pandoroid.pandora.SubscriberTypeException;
 
 
@@ -52,13 +52,15 @@ import com.pandoroid.pandora.SubscriberTypeException;
  */
 public class PandoraRemote extends JsonRPC{
 	
-	public static final long PLAYLIST_VALIDITY_TIME = 3600 * 3;
-	public static final String DEFAULT_AUDIO_FORMAT = "aacplus";
 	public static final long MIN_TIME_BETWEEN_PLAYLIST_CALLS = 30; //seconds
 
-	private String mUserAuthToken;
 	private String mPartnerAuthToken;
+	private String mUserAuthToken;
 
+	public PandoraRemote(boolean pandoraOneFlag) throws GeneralSecurityException{
+		super(pandoraOneFlag, null);
+	}
+	
 	public PandoraRemote(boolean pandoraOneFlag, String userAgent) 
 	                    throws GeneralSecurityException{
 		super(pandoraOneFlag, userAgent);			
@@ -155,7 +157,7 @@ public class PandoraRemote extends JsonRPC{
 	 * @throws Exception when a fatal error has occurred.
 	 */
 	@SuppressWarnings("unchecked")
-	public Vector<Station> getStations() throws RPCException,
+	public Vector<StationMetaInfo> getStations() throws RPCException,
 	                                            IOException,
 	                                            HttpResponseException, 
 	                                            PandoraAPIModifiedException,
@@ -172,7 +174,7 @@ public class PandoraRemote extends JsonRPC{
 		Map<String, Object> result = doCall("user.getStationList", requestArgs, 
 				                            false, true, null);
 		
-		Vector<Station> stations = new Vector<Station>();		
+		Vector<StationMetaInfo> stations = new Vector<StationMetaInfo>();		
 		try{
 			Vector<Object> resultStations = keyGetCast(result, "stations");
 	
@@ -180,7 +182,7 @@ public class PandoraRemote extends JsonRPC{
 			//properties we want.
 			for (int i = 0; i < resultStations.size(); ++i){
 				Map<String, Object> singleStation = (Map<String, Object>) resultStations.get(i);
-				stations.add(new Station(singleStation));
+				stations.add(new StationMetaInfo(singleStation));
 			}
 		}
 		catch (ClassCastException e){
@@ -193,29 +195,15 @@ public class PandoraRemote extends JsonRPC{
 		return stations;
 	}
 	
-//	private boolean isGetPlaylistCallValid(String station_token){
-//		if ((station_token.compareTo(last_acquired_playlist_station) == 0)
-//				                             &&
-//            (this.last_acquired_playlist_time > (		
-//        		  (System.currentTimeMillis() / 1000L) - MIN_TIME_BETWEEN_PLAYLIST_CALLS
-//		                                        )
-//		    )
-//		   ){
-//			return false;
-//			
-//		}
-//		return true;
-//	}
-	
 	public boolean isPandoraOneCredentials(){
 		return mCredentials.isPandoraOne();
 	}
 	
-	private boolean isPartnerAuthorized(){
+	public boolean isPartnerAuthorized(){
 		return (mPartnerAuthToken != null);
 	}
 	
-	private boolean isUserAuthorized(){
+	public boolean isUserAuthorized(){
 		return (mUserAuthToken != null);
 	}
 	
@@ -324,7 +312,7 @@ public class PandoraRemote extends JsonRPC{
 	/**
 	 * Description: Sends a song rating/feedback to the remote server.
 	 * @param trackToken -The token/ID of the track to submit feedback on.
-	 * @param isPositiveRating -Whether this is positive feedback or not.
+	 * @param isRatingPositive -Whether this is positive feedback or not.
 	 * @return A 64bit integer that represents the feedback ID.
 	 * @throws RPCException if the server replied with a failed response.
 	 * @throws IOException if a network problem occurred.
@@ -332,7 +320,7 @@ public class PandoraRemote extends JsonRPC{
 	 * @throws PandoraAPIModifiedException if the API appears to have been modified.
 	 * @throws Exception for any most likely fatal uncaught extraneous errors.
 	 */
-	public long rate(String trackToken, boolean isPositiveRating) 
+	public long rate(String trackToken, boolean isRatingPositive) 
 	                throws RPCException, IOException, HttpResponseException,
 	                       PandoraAPIModifiedException, Exception{		
 		if (!isUserAuthorized()){
@@ -342,7 +330,7 @@ public class PandoraRemote extends JsonRPC{
 		
 		Map<String, Object> feedbackParams = new HashMap<String, Object>(3);
 		feedbackParams.put("trackToken", trackToken);
-		feedbackParams.put("isPositive", isPositiveRating);
+		feedbackParams.put("isPositive", isRatingPositive);
 		feedbackParams.put("userAuthToken", mUserAuthToken);
 		Map<String, Object> response = doCall("station.addFeedback", 
 				                              feedbackParams, false, true, null);
