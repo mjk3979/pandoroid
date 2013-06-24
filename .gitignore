@@ -1,8 +1,10 @@
-bin/*
-.DS_Store
-hs_err_pid*.log
-R.java
-consoleTesting
-
-# The gen/ directory should be ignored as everything there is automatically generated.
+# Android Project Directories
+bin/
 gen/
+libs/
+
+# IDE Stuff
+.classpath
+
+# Generic OS stuff
+.DS_Store
