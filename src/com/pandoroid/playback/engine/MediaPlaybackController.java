@@ -15,7 +15,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-package com.pandoroid.playback;
+package com.pandoroid.playback.engine;
 
 import android.content.Context;
 import android.media.MediaPlayer;
@@ -28,10 +28,18 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.pandoroid.Debug;
-import com.pandoroid.pandora.PandoraAudioUrl;
-import com.pandoroid.pandora.PandoraRadio;
-import com.pandoroid.pandora.RPCException;
+import com.pandoroid.pandora.AudioUrl;
+import com.pandoroid.pandora.RPC.PandoraRemote;
+import com.pandoroid.pandora.RPC.RPCException;
 import com.pandoroid.pandora.Song;
+import com.pandoroid.pandora.RPC.PandoraRemote;
+import com.pandoroid.playback.MediaBandwidthEstimator;
+import com.pandoroid.playback.OnErrorListener;
+import com.pandoroid.playback.OnNewSongListener;
+import com.pandoroid.playback.OnPlaybackContinuedListener;
+import com.pandoroid.playback.OnPlaybackHaltedListener;
+import com.pandoroid.playback.TurboTimer;
+import com.pandoroid.service.RPCAsyncTasks;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -72,7 +80,7 @@ public class MediaPlaybackController implements Runnable{
 	 * @param station_token -The token to the station to play from.
 	 * @param min_quality -The minimum quality to play.
 	 * @param max_quality -The maximum quality to play.
-	 * @param pandora_remote -The authorized PandoraRadio RPC instance to use.
+	 * @param pandora_remote -The authorized PandoraRemote RPC instance to use.
 	 * @param net_connectivity -The connectivity manager so the network state 
 	 * 	can be acquired.
 	 * @throws Exception when an invalid audio quality range is given.
@@ -80,7 +88,7 @@ public class MediaPlaybackController implements Runnable{
 	public MediaPlaybackController(String station_token, 
 			                       String min_quality,
 			                       String max_quality,
-			                       PandoraRadio pandora_remote,
+			                       PandoraRemote pandora_remote,
 			                       ConnectivityManager net_connectivity) throws Exception{		
 		
 		m_pandora_remote = pandora_remote;
@@ -144,7 +152,7 @@ public class MediaPlaybackController implements Runnable{
 					m_turbo_mode.updateForBuffer();
 					adjustAudioQuality();
 				}
-				else if (m_active_player.m_buffer_complete_flag 
+				else if (m_active_player.mBufferCompleteFlag 
 							&& !m_cached_player_ready_flag
 							&& !m_pause){
 					prepCachedPlayer();
@@ -204,7 +212,7 @@ public class MediaPlaybackController implements Runnable{
 	 */
 	public String getCurrentQuality() throws Exception{
 		if (isAlive()){
-			return m_active_player.getUrl().m_type;
+			return m_active_player.getUrl().type;
 		}
 		throw new Exception("No quality available. The playback engine is not alive.");
 	}
@@ -273,13 +281,13 @@ public class MediaPlaybackController implements Runnable{
 	
 	/**
 	 * Description: Resets the media playback controller to use the specified
-	 * 	station_token, and the updated PandoraRadio instance. Note that this
+	 * 	station_token, and the updated PandoraRemote instance. Note that this
 	 * 	doesn't actually start the controller back up. That must be done 
 	 * 	externally.
 	 * @param station_token
 	 * @param pandora_remote
 	 */
-	public void reset(String station_token, PandoraRadio pandora_remote){
+	public void reset(String station_token, PandoraRemote pandora_remote){
 		Thread t = new Thread(new ResetThread(station_token, pandora_remote));
 		t.start();
 	}
@@ -390,8 +398,8 @@ public class MediaPlaybackController implements Runnable{
 	private volatile OnPlaybackHaltedListener m_playback_halted_listener;	
 
 	//Players
-	private ConcurrentSongMediaPlayer m_active_player;
-	private ConcurrentSongMediaPlayer m_cached_player;
+	private ConcurrentSongPlayer m_active_player;
+	private ConcurrentSongPlayer m_cached_player;
 	
 	//Our thread safe queue for the buffer samples
 	private final ConcurrentLinkedQueue<BufferSample> 
@@ -405,7 +413,7 @@ public class MediaPlaybackController implements Runnable{
 	private String m_max_quality;
 	private volatile Boolean m_need_next_song;
 	private ConnectivityManager m_net_conn;
-	private PandoraRadio m_pandora_remote;
+	private PandoraRemote m_pandora_remote;
 	private volatile Boolean m_pause = false;
 	private LinkedList<Song> m_play_queue;
 	private volatile Thread m_playback_engine_thread;
@@ -423,7 +431,7 @@ public class MediaPlaybackController implements Runnable{
 	 */
 	private void adjustAudioQuality(){
 
-		PandoraAudioUrl 
+		AudioUrl 
 			best_available_quality = getOptimizedPandoraAudioUrl(m_active_player.getSong());
 		try {
 			
@@ -438,8 +446,8 @@ public class MediaPlaybackController implements Runnable{
 			//rebuffering at times when a buffer update has not had time to be
 			//sent after a previous prepare immediately followed by a buffering 
 			//situation.
-			if (PandoraRadio.audioQualityCompare(best_available_quality.m_type, 
-					                             m_active_player.getUrl().m_type) < 0
+			if (Song.audioQualityCompare(best_available_quality.type, 
+					                             m_active_player.getUrl().type) < 0
 		                             ||
                 m_bandwidth.getBitrate() == 0){
 				rebufferSong(best_available_quality);
@@ -462,23 +470,23 @@ public class MediaPlaybackController implements Runnable{
 			int bitrate = 0;
 			int length = 0;
 			if (buffer_tmp.m_session_id == active_song_id){
-				bitrate = m_active_player.getUrl().m_bitrate;
+				bitrate = m_active_player.getUrl().bitrate;
 				length = m_active_player.getDuration();
 			}
 			else if (buffer_tmp.m_session_id == cached_song_id){
-				bitrate = m_cached_player.getUrl().m_bitrate;
+				bitrate = m_cached_player.getUrl().bitrate;
 				length = m_cached_player.getDuration();
 			}
 			
 			if (buffer_tmp.m_percent == 100){
 				if (m_bandwidth.doesIdExist(buffer_tmp.m_session_id)){
 					if (buffer_tmp.m_session_id == active_song_id){	
-						m_active_player.m_buffer_complete_flag = true;
+						m_active_player.mBufferCompleteFlag = true;
 						m_active_player.noBufferUpdatesHack(true);
 
 					}
 					else if (buffer_tmp.m_session_id == cached_song_id){
-						m_cached_player.m_buffer_complete_flag = true;
+						m_cached_player.mBufferCompleteFlag = true;
 						m_cached_player.noBufferUpdatesHack(true);
 					}
 					if (Debug.DEBUG_LEVEL_FLAG >= Debug.LEVEL_LOW){
@@ -490,7 +498,7 @@ public class MediaPlaybackController implements Runnable{
 				else{
 					if (buffer_tmp.m_session_id == active_song_id){
 						if (m_active_player.noBufferUpdatesHack(false) == 30){
-							m_active_player.m_buffer_complete_flag = true;
+							m_active_player.mBufferCompleteFlag = true;
 							Log.d("Pandoroid", "Media Id " + buffer_tmp.m_session_id +
 							           " is not sending buffer updates. We " + 
 							           " have presumed it's finished downloading.");
@@ -498,7 +506,7 @@ public class MediaPlaybackController implements Runnable{
 					}
 					else if (buffer_tmp.m_session_id == cached_song_id){
 						if (m_cached_player.noBufferUpdatesHack(false) == 30){
-							m_cached_player.m_buffer_complete_flag = true;
+							m_cached_player.mBufferCompleteFlag = true;
 							Log.d("Pandoroid", "Media Id " + buffer_tmp.m_session_id +
 							           " is not sending buffer updates. We " + 
 							           " have presumed it's finished downloading.");
@@ -526,11 +534,11 @@ public class MediaPlaybackController implements Runnable{
 	 * 	be properly evaluated, it will default to the max available audio 
 	 *  quality.
 	 * @param song -The song to get the url for.
-	 * @return A PandoraAudioUrl that holds the url.
+	 * @return An AudioUrl that holds the url.
 	 */
-	private PandoraAudioUrl getOptimizedPandoraAudioUrl(Song song){
+	private AudioUrl getOptimizedPandoraAudioUrl(Song song){
 		int bitrate = 0;
-		PandoraAudioUrl url = null;
+		AudioUrl url = null;
 		
 		bitrate = m_bandwidth.getBitrate();
 		boolean turbo_flag = m_turbo_mode.isTurbo();
@@ -539,27 +547,31 @@ public class MediaPlaybackController implements Runnable{
 				Log.d("Pandoroid", "Turbo download mode enabled!");
 			}
 		}
+		
+		if (turbo_flag){
+			url = song.
+		}
 			
-		LinkedList<PandoraAudioUrl> urls = song.getSortedAudioUrls();
+		LinkedList<AudioUrl> urls = song.getSortedAudioUrls();
 		for (int i = 0; i < urls.size(); ++i){
-			PandoraAudioUrl tmp = urls.get(i);
+			AudioUrl tmp = urls.get(i);
 
 			try {
 				if (turbo_flag){
-					if (PandoraRadio.audioQualityCompare(tmp.m_type, getMinQuality()) == 0){
+					if (Song.audioQualityCompare(tmp.type, getMinQuality()) == 0){
 						url = tmp;
 						break;
 					}
 				}
-				else if ((tmp.m_bitrate < bitrate 
+				else if ((tmp.bitrate < bitrate 
 							&& 
-					     PandoraRadio.audioQualityCompare(tmp.m_type, getMaxQuality()) <= 0)
+					     Song.audioQualityCompare(tmp.type, getMaxQuality()) <= 0)
 				     	||
-				    (PandoraRadio.audioQualityCompare(tmp.m_type, getMinQuality()) == 0)
+				    (Song.audioQualityCompare(tmp.type, getMinQuality()) == 0)
 				    	||
 				    (bitrate == 0 
 							&&
-						PandoraRadio.audioQualityCompare(tmp.m_type, getMaxQuality()) == 0)
+						Song.audioQualityCompare(tmp.type, getMaxQuality()) == 0)
 				   ){
 					url = tmp;
 					break;
@@ -570,7 +582,7 @@ public class MediaPlaybackController implements Runnable{
 		}
 
 		if (url == null){
-			url = new PandoraAudioUrl(getMaxQuality(), 0, song.getAudioUrl(getMaxQuality()));
+			url = new AudioUrl(getMaxQuality(), 0, song.getAudioUrl(getMaxQuality()));
 			Log.e("Pandoroid", "Error acquiring a url for optimized playback. " +
 					"Defaulting to max quality.", new Exception());
 		}
@@ -653,8 +665,8 @@ public class MediaPlaybackController implements Runnable{
 	 * Description: Creates a new MediaPlayer.
 	 * @return The newly created MediaPlayer.
 	 */
-	private ConcurrentSongMediaPlayer instantiateMediaPlayer(){
-		ConcurrentSongMediaPlayer media_player = new ConcurrentSongMediaPlayer();
+	private ConcurrentSongPlayer instantiateMediaPlayer(){
+		ConcurrentSongPlayer media_player = new ConcurrentSongPlayer();
 		media_player.setOnCompletionListener(new MediaCompletionListener());
 		media_player.setOnBufferingUpdateListener(new MediaBufferingUpdateListener());
 		//media_player.setOnErrorListener(new MediaErrorListener());
@@ -696,11 +708,11 @@ public class MediaPlaybackController implements Runnable{
 	 * @param max_quality
 	 * @return
 	 * @throws Exception if the strings aren't audio_quality strings as defined
-	 * 	by the constants in the class PandoraRadio.
+	 * 	by the constants in the class PandoraRemote.
 	 */
 	private boolean isValidAudioQualityRange(String min_quality, 
 			                                 String max_quality) throws Exception{
-		return (PandoraRadio.audioQualityCompare(max_quality, min_quality) >= 0);
+		return (Song.audioQualityCompare(max_quality, min_quality) >= 0);
 	}
 	
 	/**
@@ -721,19 +733,19 @@ public class MediaPlaybackController implements Runnable{
 			sendNewSongNotification(m_active_player.getSong());
 			
 			if (m_cached_player_ready_flag){
-				m_active_player.copy(m_cached_player);
+				m_active_player = m_cached_player;
 				m_valid_play_command_flag = true;
 				m_cached_player_ready_flag = false;
 				m_need_next_song = false;
 				Log.i("Pandoroid", 
-					  "Current Audio Quality: " + m_active_player.getUrl().m_bitrate);
+					  "Current Audio Quality: " + m_active_player.getUrl().bitrate);
 				Log.i("Pandoroid", "Current Audio ID: " + m_active_player.getAudioSessionId());
 			}
 			else{
 				try {
 					sendPlaybackHaltedNotification(HALT_STATE_PREPARING);
-					PandoraAudioUrl new_url = getOptimizedPandoraAudioUrl(m_active_player.getSong());
-					Log.i("Pandoroid", "Current Audio Quality: " + new_url.m_bitrate);
+					AudioUrl new_url = getOptimizedPandoraAudioUrl(m_active_player.getSong());
+					Log.i("Pandoroid", "Current Audio Quality: " + new_url.bitrate);
 					m_active_player.prepare(new_url);
 					Log.i("Pandoroid", "Current Audio ID: " + m_active_player.getAudioSessionId());
 					m_valid_play_command_flag = true;
@@ -794,39 +806,50 @@ public class MediaPlaybackController implements Runnable{
 	/**
 	 * Description: Pushes more songs to the play queue.
 	 */
-	private void pushMoreSongs(){
-		Vector<Song> new_songs = null;
-		try{
-			new_songs = m_pandora_remote.getPlaylist(m_station_token);
-			Log.i("Pandoroid", "Playlist successfully acquired.");
-			for (int i = 0; i < new_songs.size(); ++i){
-				m_play_queue.add(new_songs.get(i));
+	private void pushMoreSongs(){		
+		Handler handler = new Handler(Looper.getMainLooper());
+		handler.post(new Runnable(){
+			public void run(){
+				RPCAsyncTasks.getPlaylist(m_station_token, 
+						                  new RPCAsyncTasks.PostTask<Vector<Song>>(){
+					public void onException(Exception e){
+						if (e instanceof RPCException){
+							sendErrorNotification(e.getMessage(), 
+									              e, true, 
+									              ((RPCException) e).getCode());
+						}
+						else{
+							Log.e("Pandoroid", e.getMessage(), e);
+						}
+					}
+					
+					public void onPostExecute(Vector<Song> songs){
+						Log.i("Pandoroid", "Playlist successfully acquired.");
+						for (int i = 0; i < songs.size(); ++i){
+							m_play_queue.add(songs.get(i));
+						}
+					}
+				});
 			}
-		}
-		catch (RPCException e){
-			sendErrorNotification(e.getMessage(), e, true, e.code);
-		}
-		catch (Exception e){
-			Log.e("Pandoroid", e.getMessage(), e);
-		}
+		});
 	}
 	
 	/**
 	 * Description: Takes the current playing song and prepares it for a new
 	 * 	url.
-	 * @param url -A PandoraAudioUrl for the audio url that needs to be played.
+	 * @param url -A AudioUrl for the audio url that needs to be played.
 	 */
-	private void rebufferSong(PandoraAudioUrl url){
+	private void rebufferSong(AudioUrl url){
 		m_valid_play_command_flag = false;
 		if (m_active_player.getSong().isStillValid()){
 			
 			//A release on the cached player can in fact affect the 
 			//active player.
-			if (m_cached_player.getPlayer() != m_active_player.getPlayer()){
+			if (m_cached_player != m_active_player){
 				
 				//Let's be even more specific to only reset those cached players
 				//that aren't finished buffering.
-				if (!m_cached_player.m_buffer_complete_flag){
+				if (!m_cached_player.mBufferCompleteFlag){
 					m_cached_player_ready_flag = false;			
 					m_cached_player.release();
 				}
@@ -836,7 +859,7 @@ public class MediaPlaybackController implements Runnable{
 				m_active_player.prepare(url);
 				m_bandwidth.setAudioSessionFinished(m_active_player.getAudioSessionId());
 				m_buffer_sample_queue.clear(); //This is a little bit of a hack. Be watchful!
-				Log.i("Pandoroid", "Current Audio Quality: " + url.m_bitrate);
+				Log.i("Pandoroid", "Current Audio Quality: " + url.bitrate);
 				m_valid_play_command_flag = true;
 				m_reset_player_flag = false;
 			} 
@@ -1043,9 +1066,9 @@ public class MediaPlaybackController implements Runnable{
 	 */
 	private class ResetThread implements Runnable{
 		public String station_token;
-		public PandoraRadio pandora_remote;
+		public PandoraRemote pandora_remote;
 		
-		public ResetThread(String station_token, PandoraRadio pandora_remote){
+		public ResetThread(String station_token, PandoraRemote pandora_remote){
 			this.station_token = station_token;
 			this.pandora_remote = pandora_remote;
 		}

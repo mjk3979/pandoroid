@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
-import com.pandoroid.pandora.Station;
+import com.pandoroid.pandora.StationMetaInfo;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -57,12 +57,12 @@ public class PandoraDB extends SQLiteOpenHelper {
 	}
 	
 	/** */
-	public void syncStations(ArrayList<Station> stations) {
+	public void syncStations(ArrayList<StationMetaInfo> stations) {
 		SQLiteDatabase write = getWritableDatabase();
-		Iterator<Station> stationIter = stations.iterator();
+		Iterator<StationMetaInfo> stationIter = stations.iterator();
 		
 		while(stationIter.hasNext()) {
-			Station station = stationIter.next();
+			StationMetaInfo station = stationIter.next();
 			
 			ContentValues values = new ContentValues(5);
 			values.put("stationId", station.getStationId());

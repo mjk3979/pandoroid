@@ -33,7 +33,7 @@ import android.util.Log;
  * @contributor Dylan Powers <dylan.kyle.powers@gmail.com>
  *
  */
-public class Station {
+public class StationMetaInfo {
 	
 	private long mId; //The id and token are currently implemented by Pandora
 	private String mToken; // as being essentially the same thing.
@@ -45,7 +45,7 @@ public class Station {
 	private String mName;
 
 
-	public Station(Map<String, Object> data) throws ClassCastException,
+	public StationMetaInfo(Map<String, Object> data) throws ClassCastException,
 		                                            NumberFormatException{
 		mId = Long.parseLong((String) data.get("stationId"));
 		mToken = (String) data.get("stationIdToken");

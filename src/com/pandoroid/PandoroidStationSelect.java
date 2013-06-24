@@ -24,8 +24,9 @@ import java.util.List;
 import org.apache.http.client.HttpResponseException;
 
 import com.pandoroid.pandora.RPCException;
-import com.pandoroid.pandora.Station;
-import com.pandoroid.PandoraRadioService.ServerAsyncTask;
+import com.pandoroid.pandora.StationMetaInfo;
+import com.pandoroid.service.PandoroidMasterService;
+import com.pandoroid.service.PandoroidMasterService.ServerAsyncTask;
 import com.pandoroid.R;
 
 import android.app.AlertDialog;
@@ -57,7 +58,7 @@ import android.widget.AdapterView.OnItemClickListener;
 public class PandoroidStationSelect extends ListActivity {
 	private static AlertDialog m_alert;
 	private static boolean m_alert_active_flag = false;
-	private PandoraRadioService m_service;
+	private PandoroidMasterService m_service;
 	private StationFetcher m_station_fetch_task;
 	private static boolean m_stations_current_flag = false;
 	private static ProgressDialog m_waiting;
@@ -108,7 +109,7 @@ public class PandoroidStationSelect extends ListActivity {
 	        // interact with the service.  Because we have bound to a explicit
 	        // service that we know is running in our own process, we can
 	        // cast its IBinder to a concrete class and directly access it.
-	        m_service = ((PandoraRadioService.PandoraRadioBinder)service).getService();
+	        m_service = ((PandoroidMasterService.PandoraRadioBinder)service).getService();
 		    m_is_bound = true;
 		    m_waiting.dismiss();
 			startup();
@@ -130,7 +131,7 @@ public class PandoroidStationSelect extends ListActivity {
 	    // we know will be running in our own process (and thus won't be
 	    // supporting component replacement by other applications).
 	    bindService(new Intent(this, 
-	                PandoraRadioService.class), 
+	                PandoroidMasterService.class), 
 	                m_connection, Context.BIND_AUTO_CREATE);
 	}
 
@@ -288,7 +289,7 @@ public class PandoroidStationSelect extends ListActivity {
 			
 			//The main activity is still bound so the service won't be destroyed
 			//but we can sure try.
-			stopService(new Intent(PandoroidStationSelect.this, PandoraRadioService.class));
+			stopService(new Intent(PandoroidStationSelect.this, PandoroidMasterService.class));
 			moveTaskToBack(true);
 			finish();
 		}
@@ -309,10 +310,10 @@ public class PandoroidStationSelect extends ListActivity {
 	
 	private class StationListAdapter extends BaseAdapter {
 
-		private List<Station> stations;
+		private List<StationMetaInfo> stations;
 		private Context context;
 
-		public StationListAdapter(List<Station> StationList, Context context) {
+		public StationListAdapter(List<StationMetaInfo> StationList, Context context) {
 			this.stations = StationList;
 			this.context = context;
 		}
@@ -321,7 +322,7 @@ public class PandoroidStationSelect extends ListActivity {
 			return stations.size();
 		}
 
-		public Station getItem(int position) {
+		public StationMetaInfo getItem(int position) {
 			return stations.get(position);
 		}
  
@@ -330,7 +331,7 @@ public class PandoroidStationSelect extends ListActivity {
 		}
 
 		public View getView(int position, View convertView, ViewGroup parent) {
-			Station station = stations.get(position);
+			StationMetaInfo station = stations.get(position);
 			View itemLayout = LayoutInflater.from(context).inflate(R.layout.stations_item, 
 					                                               parent, 
 					                                               false);

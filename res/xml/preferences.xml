@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- <?xml version="1.0" encoding="utf-8"?> -->
 <!-- Copyright (C) 2008 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +18,11 @@
 <PreferenceScreen
         xmlns:android="http://schemas.android.com/apk/res/android">
     <PreferenceCategory android:title="@string/account">
-        <EditTextPreference android:title="@string/username_title" android:dialogTitle="@string/username_title" android:key="pandora_username" android:summary="@string/username_desc"/>
-        <EditTextPreference android:title="@string/password_title" android:dialogTitle="@string/password_title" android:key="pandora_password" android:password="true" android:summary="@string/password_desc"/>
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/behavior">
         <CheckBoxPreference android:key="behave_nextOnBan" android:summary="@string/skip_desc" android:title="@string/skip_title" android:defaultValue="true"></CheckBoxPreference>
-        <CheckBoxPreference android:key="behave_resumeOnHangup" android:summary="@string/resume_desc" android:title="@string/resume_title" android:defaultValue="true"></CheckBoxPreference>    
+        <CheckBoxPreference android:key="behave_resumeOnHangup" android:summary="@string/resume_desc" android:title="@string/resume_title" android:defaultValue="true"></CheckBoxPreference>
+        <MultiSelectListPreference android:selectable="true" android:dialogTitle="Available Audio Formats" android:enabled="true"/>    
     </PreferenceCategory>
+    <PreferenceCategory></PreferenceCategory>
 </PreferenceScreen>

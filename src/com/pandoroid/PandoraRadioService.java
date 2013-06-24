@@ -27,12 +27,13 @@ import org.apache.http.client.HttpResponseException;
 import com.pandoroid.pandora.PandoraRadio;
 import com.pandoroid.pandora.RPCException;
 import com.pandoroid.pandora.Song;
-import com.pandoroid.pandora.Station;
+import com.pandoroid.pandora.StationMetaInfo;
 import com.pandoroid.pandora.SubscriberTypeException;
-import com.pandoroid.playback.MediaPlaybackController;
 import com.pandoroid.playback.OnNewSongListener;
 import com.pandoroid.playback.OnPlaybackContinuedListener;
 import com.pandoroid.playback.OnPlaybackHaltedListener;
+import com.pandoroid.playback.engine.MediaPlaybackController;
+import com.pandoroid.ui.PlayerActivity;
 import com.pandoroid.R;
 
 import android.app.AlertDialog;
@@ -79,12 +80,12 @@ public class PandoraRadioService extends Service {
 	private SharedPreferences m_prefs;
 	
 	// tracking/organizing what we are doing
-	private Station m_current_station;
+	private StationMetaInfo m_current_station;
 	private String m_audio_quality;
 	private boolean m_paused;
 	
 	//We'll use this for now as the database implementation is garbage.
-	private ArrayList<Station> m_stations; 
+	private ArrayList<StationMetaInfo> m_stations; 
 	private HashMap<Class<?>,Object> listeners = new HashMap<Class<?>,Object>();
 
 	protected PandoraDB db;
@@ -122,7 +123,7 @@ public class PandoraRadioService extends Service {
 		m_paused = false;
 		m_pandora_remote = new PandoraRadio();
 		image_downloader = new ImageDownloader();
-		m_stations = new ArrayList<Station>();
+		m_stations = new ArrayList<StationMetaInfo>();
 		
 		
 		connectivity_manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -183,11 +184,11 @@ public class PandoraRadioService extends Service {
 		return m_song_playback.getSong();
 	}
 	
-	public Station getCurrentStation() {
+	public StationMetaInfo getCurrentStation() {
 		return m_current_station;
 	}
 	
-	public ArrayList<Station> getStations(){
+	public ArrayList<StationMetaInfo> getStations(){
 		return m_stations;
 	}
 	
@@ -267,7 +268,7 @@ public class PandoraRadioService extends Service {
 				Notification notification = new Notification(R.drawable.icon, 
                         									 "Pandoroid Radio", 
                         									 System.currentTimeMillis());
-				Intent notificationIntent = new Intent(this, PandoroidPlayer.class);
+				Intent notificationIntent = new Intent(this, PlayerActivity.class);
 				PendingIntent contentIntent = PendingIntent.getActivity(this, 
                                    										NOTIFICATION_SONG_PLAYING, 
                                											notificationIntent, 
@@ -311,7 +312,7 @@ public class PandoraRadioService extends Service {
 	
 	public boolean setCurrentStation(String station_id) {
 		for(int i = 0; i < m_stations.size(); ++i){
-			Station tmp_station = m_stations.get(i);
+			StationMetaInfo tmp_station = m_stations.get(i);
 			if (tmp_station.compareTo(station_id) == 0){
 				m_current_station = tmp_station;
 				stopForeground(true);
@@ -353,7 +354,7 @@ public class PandoraRadioService extends Service {
 
 	
 	public void rate(String rating) {
-		if(rating == PandoroidPlayer.RATING_NONE) {
+		if(rating == PlayerActivity.RATING_NONE) {
 			// cannot set rating to none
 			return;
 		}
@@ -467,7 +468,7 @@ public class PandoraRadioService extends Service {
 		public Void doInBackground(String... ratings){
 			if (m_song != null){
 				String rating = ratings[0];				
-				boolean rating_bool = rating.equals(PandoroidPlayer.RATING_LOVE) ? true : false;
+				boolean rating_bool = rating.equals(PlayerActivity.RATING_LOVE) ? true : false;
 				try {
 					m_pandora_remote.rate(this.m_song, rating_bool);
 					Log.i("Pandoroid", "A " + 

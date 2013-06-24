@@ -1,79 +1,94 @@
-package com.pandoroid.playback;
+package com.pandoroid.playback.engine;
 
 import java.io.IOException;
 
-import com.pandoroid.pandora.PandoraAudioUrl;
+import com.pandoroid.pandora.AudioUrl;
 import com.pandoroid.pandora.Song;
 
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnSeekCompleteListener;
 
-public class ConcurrentSongMediaPlayer{
+/**
+ * Synchronized to work most efficiently with the MediaPlaybackEngine.
+ * @author Dylan Powers <dylan.kyle.powers@gmail.com>
+ *
+ */
+public class ConcurrentSongPlayer extends MediaPlayer{
 	
 	//A constant for setting the percentage of a song's total length that needs
 	//to be played before it is determined as being effectively finished.
 	public static final int MINIMUM_SONG_COMPLETENESS = 95;
 	
-	public volatile Boolean m_buffer_complete_flag = false;
+	private final Object BUFFER_LOCK = new Object();
+	private final Object LOCK = this;	
+	private final Object PLAYER_LOCK = new Object();
 	
-	public ConcurrentSongMediaPlayer(){
-		m_player = new MediaPlayer();
-		m_alive = false;
-		m_buffering_counter = -1;
+	public volatile Boolean mBufferCompleteFlag = false;
+	
+	private volatile boolean mAlive = false;	
+	private volatile int mBufferingCounter = -1;
+	private volatile int mNum_100_BufferUpdates = 0;
+	private volatile boolean mSeekingFlag;
+	private volatile Song mSong;
+	private volatile AudioUrl mUrl;
+//	private volatile MediaPlayer mPlayer;
+	
+	public ConcurrentSongPlayer(){
+		super();
 	}
 	
 	/**
 	 * Description: Overloaded constructor for setting the song upon creation.
 	 * @param song -The song to initialize to.
 	 */
-	public ConcurrentSongMediaPlayer(Song song){
-		m_player = new MediaPlayer();
+	public ConcurrentSongPlayer(Song song){
+		super();
 		setSong(song);
 	}
 	
-	/**
-	 * Description: Overloaded constructor for setting the initialized song, 
-	 * 	and the MediaPlayer to use.
-	 * @param song -The Song to initialize to.
-	 * @param mp -The MediaPlayer to initialize to.
-	 */
-	public ConcurrentSongMediaPlayer(Song song, MediaPlayer mp){
-		m_player = mp;
-		setSong(song);
-	}
+//	/**
+//	 * Description: Overloaded constructor for setting the initialized song, 
+//	 * 	and the MediaPlayer to use.
+//	 * @param song -The Song to initialize to.
+//	 * @param mp -The MediaPlayer to initialize to.
+//	 */
+//	public ConcurrentSongPlayer(Song song, MediaPlayer mp){
+//		m_player = mp;
+//		setSong(song);
+//	}
 	
-	/**
-	 * Description: Copies the contents of another ConcurrentSongMediaPlayer
-	 * 	into itself. 
-	 * @param other_player -The ConcurrentSongMediaPlayer to copy from.
-	 */
-	public void copy(ConcurrentSongMediaPlayer other_player){
-		if (this != other_player){
-			release();
-			synchronized(this){
-				m_player = other_player.getPlayer();
-			}
-			m_song = other_player.getSong();
-			m_buffer_complete_flag = other_player.m_buffer_complete_flag;
-			m_alive = other_player.m_alive;
-			m_url = other_player.getUrl();
-			m_num_100_buffer_updates = other_player.m_num_100_buffer_updates;
-		}
-	}
+//	/**
+//	 * Description: Copies the contents of another ConcurrentSongMediaPlayer
+//	 * 	into itself. 
+//	 * @param other_player -The ConcurrentSongMediaPlayer to copy from.
+//	 */
+//	public void copy(ConcurrentSongPlayer other_player){
+//		if (this != other_player){
+//			release();
+//			synchronized(this){
+//				m_player = other_player.getPlayer();
+//			}
+//			m_song = other_player.getSong();
+//			m_buffer_complete_flag = other_player.m_buffer_complete_flag;
+//			m_alive = other_player.m_alive;
+//			m_url = other_player.getUrl();
+//			m_num_100_buffer_updates = other_player.m_num_100_buffer_updates;
+//		}
+//	}
 	
 	/**
 	 * Description: Synchronized method that retrieves the audio session id from
 	 * 	the underlying MediaPlayer.
 	 * @return The audio session id.
 	 */
-	public int getAudioSessionId(){
-		synchronized(this){
-			try{
-				return m_player.getAudioSessionId();
+	public int getAudioSessionId(){		
+		try{
+			synchronized(PLAYER_LOCK){
+				return super.getAudioSessionId();
 			}
-			catch(IllegalStateException e){
-				return 0;
-			}
+		}
+		catch(IllegalStateException e){
+			return 0;
 		}
 	}
 	
@@ -83,51 +98,54 @@ public class ConcurrentSongMediaPlayer{
 	 * @return
 	 */
 	public int getCurrentPosition(){
-		synchronized(this){
-			return m_player.getCurrentPosition();
+		synchronized(PLAYER_LOCK){
+			return super.getCurrentPosition();
 		}
 	}
 	
 	/**
 	 * Description: Synchronized method that retrieves the duration of the 
 	 * 	song from the underlying MediaPlayer.
+	 * TODO Why do I check for it being alive?
 	 * @return
 	 */
 	public int getDuration(){
-		if (m_alive){
-			synchronized(this){
-				return m_player.getDuration();
+		synchronized(LOCK){
+			if (mAlive){
+				synchronized(PLAYER_LOCK){
+					return super.getDuration();
+				}
 			}
-		}
-		else{
-			return -1; //Signifying an error.
+			else{
+				return -1; //Signifying an error.
+			}
 		}
 	}
 	
-	/**
-	 * Description: Synchronized method that returns the underlying MediaPlayer.
-	 * @return
-	 */
-	public MediaPlayer getPlayer(){
-		synchronized(this){
-			return m_player;
-		}
-	}
+//	/**
+//	 * Description: Synchronized method that returns the underlying MediaPlayer.
+//	 * @return
+//	 */
+//	public MediaPlayer getPlayer(){
+//		synchronized(PLAYER_LOCK){
+//			return m_player;
+//		}
+//	}
 	
 	/**
 	 * Description: Returns the song.
 	 * @return
 	 */
 	public Song getSong(){
-		return m_song;
+		return mSong;
 	}
 	
 	/**
 	 * Description: Gets the url.
 	 * @return
 	 */
-	public PandoraAudioUrl getUrl(){
-		return m_url;
+	public AudioUrl getUrl(){
+		return mUrl;
 	}
 	
 	/**
@@ -136,7 +154,7 @@ public class ConcurrentSongMediaPlayer{
 	 * @return
 	 */
 	public boolean isBuffering(){
-		synchronized(buffer_lock){
+		synchronized(BUFFER_LOCK){
 			if (m_buffering_counter > 0){
 				--m_buffering_counter;
 			}
@@ -213,35 +231,38 @@ public class ConcurrentSongMediaPlayer{
 	 * @throws IllegalStateException
 	 * @throws IOException
 	 */
-	public void prepare(PandoraAudioUrl url) throws IllegalArgumentException, 
+	public void prepare(AudioUrl url) throws IllegalArgumentException, 
 													SecurityException, 
 													IllegalStateException, 
 													IOException{
-		m_url = url;
 		int prev_playback_pos = -1;
-		if (m_alive){
-			prev_playback_pos = getCurrentPosition();
-		}
-		reset();
 		
 		synchronized(this){
-			m_player.setDataSource(url.toString());
-			m_player.prepare();
-			if (prev_playback_pos > 0){
-				m_seeking_flag = true;
-				setOnSeekCompleteListener();
-				m_player.seekTo(prev_playback_pos);
+			m_url = url;
+			if (m_alive){
+				prev_playback_pos = getCurrentPosition();
 			}
+			reset();
+			
+			synchronized(playerLock){
+				m_player.setDataSource(url.toString());
+				m_player.prepare();
+				if (prev_playback_pos > 0){
+					m_seeking_flag = true;
+					setOnSeekCompleteListener();
+					m_player.seekTo(prev_playback_pos);
+				}
+			}
+			m_alive = true;
+			setBuffering(false);
 		}
-		m_alive = true;
-		setBuffering(false);
 	}
 	
 	/**
 	 * Description: Synchronized method that releases the underlying MediaPlayer.
 	 */
 	public void release(){
-		synchronized(this){
+		synchronized(playerLock){
 			m_player.release();
 		}
 		m_alive = false;
@@ -250,10 +271,10 @@ public class ConcurrentSongMediaPlayer{
 	/**
 	 * Description: Synchronized method that resets the underlying MediaPlayer.
 	 */
-	public void reset(){
-		synchronized(this){
+	private void reset(){
+//		synchronized(this){
 			m_player.reset();
-		}
+//		}
 		m_alive = false;
 	}
 	
@@ -273,7 +294,7 @@ public class ConcurrentSongMediaPlayer{
 	 * @param bool
 	 */
 	public void setBuffering(boolean bool){
-		synchronized(buffer_lock){
+		synchronized(BUFFER_LOCK){
 			if (bool){
 				m_buffering_counter = 0;
 			}
@@ -312,34 +333,29 @@ public class ConcurrentSongMediaPlayer{
 	 * @param song -The Song to set to.
 	 */
 	public void setSong(Song song){
-		m_song = song;
-		m_buffer_complete_flag = false;
-		m_buffering_counter = -1;
-		reset();
+		synchronized(LOCK){
+			mSong = song;
+			mBufferCompleteFlag = false;
+			mBufferingCounter = -1;
+			synchronized(PLAYER_LOCK){
+				reset();
+			}
+		}
 	}
 	
 	/**
 	 * Description: Synchronized method that starts the underlying media player.
 	 */
 	public void start(){
-		synchronized(this){
-			m_player.start();
+		synchronized(PLAYER_LOCK){
+			super.start();
 		}
 	}
 	
-	private final Object buffer_lock = new Object();
-	
-	private Boolean m_alive;	
-	private volatile int m_buffering_counter;
-	private volatile int m_num_100_buffer_updates = 0;
-	private volatile boolean m_seeking_flag;
-	private volatile Song m_song;
-	private volatile PandoraAudioUrl m_url;
-	private MediaPlayer m_player;
+
 	
 	private void setOnSeekCompleteListener(){
-		m_player.setOnSeekCompleteListener(new OnSeekCompleteListener(){
-
+		mPlayer.setOnSeekCompleteListener(new OnSeekCompleteListener(){
 			public void onSeekComplete(MediaPlayer mp) {
 				m_seeking_flag = false;
 			}

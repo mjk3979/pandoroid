@@ -44,4 +44,8 @@
     <string name="buffering">Buffering&#8230;</string>
     <string name="preparing">Preparing&#8230;</string>
     <string name="no_songs">Retrieving songs&#8230;</string>
+    <string name="error_unsupported_api_message">The current Pandora API is unsupported. Please update the app or report this error to the GitHub project page. Details can be found in your system logs.</string>
+    <string name="error_unsupported_api_neutral">Report</string>
+    <string name="error_report_url">https://github.com/dylanPowers/pandoroid/issues</string>
+    <string name="error_positive">Quit</string>
 </resources>
