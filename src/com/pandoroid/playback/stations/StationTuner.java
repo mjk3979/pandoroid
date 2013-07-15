@@ -19,7 +19,7 @@ import com.pandoroid.service.RPCAsyncTasks;
  * @author Dylan Powers <dylan.kyle.powers@gmail.com>
  *
  */
-public class StationsHandler {
+public class StationTuner {
 
 	private RPCAsyncTasks mAsyncRpc;
 	private StationPlayer mCurrentStation;
@@ -29,7 +29,7 @@ public class StationsHandler {
 	private OnPlaybackStateChangedListener mPlayStateListener;
 	private Map<String, StationPlayer> mStations;	
 	
-	public StationsHandler(Vector<StationMetaInfo> stations, 
+	public StationTuner(Vector<StationMetaInfo> stations, 
 	                       RPCAsyncTasks asyncRpc,
 	                       OnPlaybackStateChangedListener pStateChangedListener,
 	                       OnNewSongListener newSongListener,
