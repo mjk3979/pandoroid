@@ -39,7 +39,8 @@ public interface OnAlertListener {
 		}
 		
 		public boolean equals(Alert other) {
-			if (action == other.action && alert == other.alert) {
+			if (other != null && 
+				action == other.action && alert == other.alert) {
 				return true;
 			}
 			return false;

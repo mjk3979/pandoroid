@@ -194,6 +194,7 @@ public class PandoroidMasterService extends Service {
 	
 	@Override
 	public void onDestroy() {
+		//TODO: Other fatal stopping tasks need to be done.
 //		if (m_song_playback != null){
 //			m_song_playback.stop();
 //		}
@@ -213,51 +214,123 @@ public class PandoroidMasterService extends Service {
 	private void abandonAudioFocus() {
 		mAudioManager.abandonAudioFocus(mAudioFocusChangeListener);
 	}
+	
+	private void dismissAlert(OnAlertListener.Alert alert) {
+		if (alert.equals(mAlertStack.peekLast())) {
+			mAlertStack.pop();
+			mAlertCallback.onRemoveAlert();
+			if (!mAlertStack.isEmpty()) {
+				raiseAlert(mAlertStack.peekLast(), false);
+			}
+		} else { //Now we have to do some digging.
+			if (!mAlertStack.isEmpty()) {
+				if (!mAlertStack.removeLastOccurrence(alert)) {
+					//Let's not fail, but at least log it if nothing is found.
+					//This sort of thing is an error, but an error we can live
+					//with.
+					Log.d(TAG, 
+						  "dismissAlert() called on an alert that doesn't" +
+					      "exist.\nActionCode: " + alert.action + "\n" +
+					      "AlertCode: " + alert.alert);
+				}
+			}
+		}
+	}
+	
+	private void executeSignIn(String username, String password) {
+		if (!mRemote.isPartnerAuthorized()){
+			partnerAuthorization();
+		}
+		else{
+			if (username != null && password != null){
+				final Alert signInAlert = new Alert(ActionCode.SIGNING_IN, 
+						                            AlertCode.RUNNING);
+				raiseAlert(signInAlert);
+				if (mRunningAsyncTasks.userLogIn == null){
+					mRunningAsyncTasks.userLogIn = mPandoraRPCAsync.userLogIn(username, 
+						                                                      password,
+						new RPCAsyncTasks.PostTask<Void>() {
+				
+							@Override
+							public void onException(Exception e) {
+								if (e instanceof SubscriberTypeException){
+									switchSubscriberTypes();
+								}
+								// TODO Auto-generated method stub							
+							}
+				
+							@Override
+							public void onSuccess(Void arg) {
+								// TODO Auto-generated method stub
+								//Set the station
+								
+							}
 
+							@Override
+							public void always() {
+								dismissAlert(signInAlert);
+								mRunningAsyncTasks.userLogIn = null;
+							}
+						
+					});	
+				}
+			}
+			else{
+				raiseAlert(new Alert(ActionCode.SIGNING_IN, 
+						             AlertCode.ERROR_MISSING_USER_CREDENTIALS));
+			}
+		}
+	}
+	
 	private void fetchStations(){
 		if (mRunningAsyncTasks.getStations == null){
 			final Alert stationsFetchAlert = new Alert(ActionCode.ACQUIRING_STATIONS, 
 					                                   AlertCode.RUNNING);
 			raiseAlert(stationsFetchAlert);
 			mRunningAsyncTasks.getStations = mPandoraRPCAsync.getStations(
-					new RPCAsyncTasks.PostTask<Vector<StationMetaInfo>>() {
+				new RPCAsyncTasks.PostTask<Vector<StationMetaInfo>>() {
 
-				@Override
-				public void onException(Exception e) {
-					// TODO Auto-generated method stub
-					
-				}
-
-				@Override
-				public void onPostExecute(Vector<StationMetaInfo> arg) {
-					removeAlert(stationsFetchAlert);
-					mRunningAsyncTasks.getStations = null;
-					if (mTuner == null){
-						//TODO: Setup the stationTuner
-						//mStationsHandler = new StationsHandler(arg, mPandoraRPCAsync);
+					@Override
+					public void onException(Exception e) {
+						// TODO Auto-generated method stub
+						
 					}
-					else{
-						mTuner.update(arg);
-					}
-					
-					if (mCurrentStation == null){
-						String token = mPrefs.getLastStationToken();
-						if (token != null){
-							try{
-								mCurrentStation = mTuner.changeStations(token);
+	
+					@Override
+					public void onSuccess(Vector<StationMetaInfo> arg) {
+						if (mTuner == null){
+							//TODO: Setup the stationTuner
+							//mStationsHandler = new StationsHandler(arg, mPandoraRPCAsync);
+						}
+						else{
+							mTuner.update(arg);
+						}
+						
+						if (mCurrentStation == null){
+							String token = mPrefs.getLastStationToken();
+							if (token != null){
+								try{
+									mCurrentStation = mTuner.changeStations(token);
+								}
+								catch(Exception e){
+									mPrefs.removeLastStationToken();
+									raiseAlert(new Alert(ActionCode.ACQUIRING_STATIONS,
+											             AlertCode.ERROR_MISSING_STATION_SELECTION));
+								}
 							}
-							catch(Exception e){
-								mPrefs.removeLastStationToken();
+							else{
 								raiseAlert(new Alert(ActionCode.ACQUIRING_STATIONS,
 										             AlertCode.ERROR_MISSING_STATION_SELECTION));
 							}
 						}
-						else{
-							raiseAlert(new Alert(ActionCode.ACQUIRING_STATIONS,
-									             AlertCode.ERROR_MISSING_STATION_SELECTION));
-						}
 					}
-				}			
+
+					@Override
+					public void always() {
+						dismissAlert(stationsFetchAlert);
+						mRunningAsyncTasks.getStations = null;						
+					}
+					
 			});
 		}
 	}
@@ -310,30 +383,38 @@ public class PandoroidMasterService extends Service {
 	}
 	
 	
-	private void partnerAuthorization(){
-		if (mRunningAsyncTasks.partnerLogIn == null){
+	private void partnerAuthorization() {
+		if (mRunningAsyncTasks.partnerLogIn == null) {
+			final Alert signInAlert = new Alert(ActionCode.SIGNING_IN, 
+                    AlertCode.RUNNING);
+			raiseAlert(signInAlert);
 			mRunningAsyncTasks.partnerLogIn = mPandoraRPCAsync.partnerLogIn(
-					new RPCAsyncTasks.PostTask<Void>(){	
-						@Override
-						public void onException(Exception e) {
-							if (e instanceof RPCException && 
-									((RPCException) e).getCode() == 
-										RPCException.INVALID_PARTNER_CREDENTIALS) {
-								raiseAlert(new Alert(ActionCode.SIGNING_IN,
-										             AlertCode.ERROR_UNSUPPORTED_API));
-								Log.e(TAG, "Invalid partner credentials");
-							} else {
-								raiseAlert(new Alert(ActionCode.SIGNING_IN,
-										             mRunningAsyncTasks.exceptionHandler(e)));
-							}
+				new RPCAsyncTasks.PostTask<Void>(){	
+					@Override
+					public void onException(Exception e) {
+						if (e instanceof RPCException && 
+								((RPCException) e).getCode() == 
+									RPCException.INVALID_PARTNER_CREDENTIALS) {
+							raiseAlert(new Alert(ActionCode.SIGNING_IN,
+									             AlertCode.ERROR_UNSUPPORTED_API));
+							Log.e(TAG, "Invalid partner credentials");
+						} else {
+							raiseAlert(new Alert(ActionCode.SIGNING_IN,
+									             mRunningAsyncTasks.exceptionHandler(e)));
 						}
-			
-						@Override
-						public void onPostExecute(Void arg) {
-							mRunningAsyncTasks.partnerLogIn = null;
-							signIn();
-						}						
-					});
+					}
+		
+					@Override
+					public void onSuccess(Void arg) {
+						signIn();
+					}
+
+					@Override
+					public void always() {
+						dismissAlert(signInAlert);
+						mRunningAsyncTasks.partnerLogIn = null;
+					}
+				});
 		}
 	}
 
@@ -409,11 +490,14 @@ public class PandoroidMasterService extends Service {
 			}
 
 			@Override
-			public void onPostExecute(Long arg) {
+			public void onSuccess(Long arg) {
 				// TODO Auto-generated method stub
-				removeAlert(ratingAlert);
 			}
-			
+
+			@Override
+			public void always() {
+				dismissAlert(ratingAlert);
+			}			
 		});
 	}
 	
@@ -429,20 +513,7 @@ public class PandoroidMasterService extends Service {
 				new RemoteControlClient(mediaPendingIntent);
 		mAudioManager.registerRemoteControlClient(mRemoteControlClient);
 	}
-	
-	private void removeAlert(OnAlertListener.Alert alert){
-		if (alert.equals(mAlertStack.peekLast())) {
-			mAlertStack.pop();
-			mAlertCallback.onRemoveAlert();
-			if (!mAlertStack.isEmpty()) {
-				raiseAlert(mAlertStack.peekLast(), false);
-			}
-		} else { //Now we have to do some digging.
-			if (!mAlertStack.isEmpty()) {
-				mAlertStack.removeLastOccurrence(alert);
-			}
-		}
-	}
+
 	
 	/**
 	 * Description: Unregisters the previously set OnAlertListener(). This must
@@ -469,45 +540,6 @@ public class PandoroidMasterService extends Service {
 	}
 	
 	
-	private void serverSignIn(String username, String password){
-		if (!mRemote.isPartnerAuthorized()){
-			partnerAuthorization();
-		}
-		else{
-			if (username != null && password != null){
-				final Alert signInAlert = new Alert(ActionCode.SIGNING_IN, 
-						                            AlertCode.RUNNING);
-				raiseAlert(signInAlert);
-				if (mRunningAsyncTasks.userLogIn == null){
-					mRunningAsyncTasks.userLogIn = mPandoraRPCAsync.userLogIn(username, 
-							                                    password,
-							                                    new RPCAsyncTasks.PostTask<Void>() {
-			
-						@Override
-						public void onException(Exception e) {
-							if (e instanceof SubscriberTypeException){
-								switchSubscriberTypes();
-							}
-							// TODO Auto-generated method stub							
-						}
-			
-						@Override
-						public void onPostExecute(Void arg) {
-							removeAlert(signInAlert);
-							mRunningAsyncTasks.userLogIn = null;
-							// TODO Auto-generated method stub
-							//Set the station
-							
-						}
-					});	
-				}
-			}
-			else{
-				raiseAlert(new Alert(ActionCode.SIGNING_IN, 
-						             AlertCode.ERROR_MISSING_USER_CREDENTIALS));
-			}
-		}
-	}	
 	
 	public void setCurrentStation(String stationToken) {
 		try {
@@ -546,7 +578,7 @@ public class PandoroidMasterService extends Service {
 		} else {
 			mPrefs.setPassword(password);
 			mPrefs.setUsername(username);
-			serverSignIn(username, password);
+			executeSignIn(username, password);
 		}
 	}
 	
@@ -558,7 +590,7 @@ public class PandoroidMasterService extends Service {
 		String username = mPrefs.getUsername();
 		String password = mPrefs.getPassword();
 		
-		serverSignIn(username, password);
+		executeSignIn(username, password);
 	}
 	
 	public void signOut() {
@@ -606,6 +638,7 @@ public class PandoroidMasterService extends Service {
 	private void stop(){
 		pause();
 		//Then remove all notifications.
+		//TODO Other fancy stuff
 	}
 	
 	private void switchSubscriberTypes(){
@@ -666,12 +699,17 @@ public class PandoroidMasterService extends Service {
 		public void onAudioFocusChange(int focusChange) {
 			switch(focusChange){
 				case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+					pause();
 					break;
 				case AudioManager.AUDIOFOCUS_LOSS:
+					stop();
 					break;
 				case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+					//TODO Figure out this part later
+					pause();
 					break;
 				case AudioManager.AUDIOFOCUS_GAIN:
+					play();
 					break;
 			}
 		}		
