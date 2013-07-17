@@ -1,10 +1,10 @@
 package com.pandoroid.playback.stations;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 
 import com.pandoroid.pandora.StationMetaInfo;
 import com.pandoroid.playback.OnErrorListener;
@@ -24,12 +24,12 @@ public class StationTuner {
 	private RPCAsyncTasks mAsyncRpc;
 	private StationPlayer mCurrentStation;
 	private OnRPCErrorListener mErrorListener;
-	private Vector<StationMetaInfo> mMetaInfo;
+	private ArrayList<StationMetaInfo> mMetaInfo;
 	private OnNewSongListener mNewSongListener;
 	private OnPlaybackStateChangedListener mPlayStateListener;
 	private Map<String, StationPlayer> mStations;	
 	
-	public StationTuner(Vector<StationMetaInfo> stations, 
+	public StationTuner(ArrayList<StationMetaInfo> stations, 
 	                       RPCAsyncTasks asyncRpc,
 	                       OnPlaybackStateChangedListener pStateChangedListener,
 	                       OnNewSongListener newSongListener,
@@ -65,7 +65,7 @@ public class StationTuner {
 		return mCurrentStation;
 	}
 	
-	public Vector<StationMetaInfo> getStations(){
+	public ArrayList<StationMetaInfo> getStations(){
 		return mMetaInfo;
 	}
 	
@@ -73,7 +73,7 @@ public class StationTuner {
 		
 	}
 	
-	public void update(Vector<StationMetaInfo> stations){
+	public void update(ArrayList<StationMetaInfo> stations){
 		
 		//First, lets create a table of our old stations so we can mark them as
 		//being alive or not. Note: Our goal is to be able to reuse all or

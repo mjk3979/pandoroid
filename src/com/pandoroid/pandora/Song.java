@@ -20,9 +20,9 @@
  */
 package com.pandoroid.pandora;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Vector;
 
 import android.util.Log;
 
@@ -64,7 +64,7 @@ public class Song {
 	public static final String MP3_128 = "HTTP_128_MP3";
 	public static final String MP3_192 = "HTTP_192_MP3";
 
-	public Song(Map<String, Object> data, Vector<AudioUrl> audioUrls) 
+	public Song(Map<String, Object> data, ArrayList<AudioUrl> audioUrls) 
 			   throws ClassCastException, NumberFormatException {
 		mAlbum = (String) data.get("albumName");
 		mAlbumArtUrl = (String) data.get("albumArtUrl");

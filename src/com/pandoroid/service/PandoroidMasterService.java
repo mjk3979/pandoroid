@@ -25,7 +25,6 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
-import java.util.Vector;
 
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpResponseException;
@@ -288,7 +287,7 @@ public class PandoroidMasterService extends Service {
 					                                   AlertCode.RUNNING);
 			raiseAlert(stationsFetchAlert);
 			mRunningAsyncTasks.getStations = mPandoraRPCAsync.getStations(
-				new RPCAsyncTasks.PostTask<Vector<StationMetaInfo>>() {
+				new RPCAsyncTasks.PostTask<ArrayList<StationMetaInfo>>() {
 
 					@Override
 					public void onException(Exception e) {
@@ -297,7 +296,7 @@ public class PandoroidMasterService extends Service {
 					}
 	
 					@Override
-					public void onSuccess(Vector<StationMetaInfo> arg) {
+					public void onSuccess(ArrayList<StationMetaInfo> arg) {
 						if (mTuner == null){
 							//TODO: Setup the stationTuner
 							//mStationsHandler = new StationsHandler(arg, mPandoraRPCAsync);
@@ -734,7 +733,7 @@ public class PandoroidMasterService extends Service {
 	}
 	
 	private class RunningAsyncTasks {
-		public AsyncTask<Void, RPCAsyncTasks.Progress, Vector<StationMetaInfo>> getStations;
+		public AsyncTask<Void, RPCAsyncTasks.Progress, ArrayList<StationMetaInfo>> getStations;
 		public AsyncTask<Void, RPCAsyncTasks.Progress, Void> partnerLogIn;
 		public AsyncTask<String, RPCAsyncTasks.Progress, Void> userLogIn;
 		

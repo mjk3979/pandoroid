@@ -19,7 +19,7 @@
  */
 package com.pandoroid.service;
 
-import java.util.Vector;
+import java.util.ArrayList;
 
 import com.pandoroid.pandora.Song;
 import com.pandoroid.pandora.StationMetaInfo;
@@ -59,11 +59,13 @@ public class RPCAsyncTasks{
 	 * @param stationToken
 	 * @param taskClass
 	 */
-	public AsyncTask<String, Progress, Vector<Song>> getPlaylist(String stationToken, 
-			                                                     final PostTask<Vector<Song>> taskClass){
-		RPCAsyncTask<String, Vector<Song>> task = new RPCAsyncTask<String, Vector<Song>>(taskClass){
-			protected Vector<Song> doInBackground(String... params){
-				Vector<Song> songs = null;
+	public AsyncTask<String, Progress, ArrayList<Song>> 
+			getPlaylist(String stationToken, final PostTask<ArrayList<Song>> taskClass) {
+		
+		RPCAsyncTask<String, ArrayList<Song>> 
+				task = new RPCAsyncTask<String, ArrayList<Song>>(taskClass){			
+			protected ArrayList<Song> doInBackground(String... params){
+				ArrayList<Song> songs = null;
 				try {
 					networkConnectWait();
 					songs = mRemote.getPlaylist(params[0]);
@@ -83,10 +85,13 @@ public class RPCAsyncTasks{
 	 * 	See {@link PandoraRemote#getStations()}
 	 * @param taskClass
 	 */
-	public AsyncTask<Void, Progress, Vector<StationMetaInfo>> getStations(final PostTask<Vector<StationMetaInfo>> taskClass){
-		RPCAsyncTask<Void, Vector<StationMetaInfo>> task = new RPCAsyncTask<Void, Vector<StationMetaInfo>>(taskClass){
-			protected Vector<StationMetaInfo> doInBackground(Void... params){
-				Vector<StationMetaInfo> stations = null;
+	public AsyncTask<Void, Progress, ArrayList<StationMetaInfo>> 
+			getStations(final PostTask<ArrayList<StationMetaInfo>> taskClass) {
+		
+		RPCAsyncTask<Void, ArrayList<StationMetaInfo>> 
+				task = new RPCAsyncTask<Void, ArrayList<StationMetaInfo>>(taskClass) {
+			protected ArrayList<StationMetaInfo> doInBackground(Void... params) {
+				ArrayList<StationMetaInfo> stations = null;
 				try{
 					networkConnectWait();
 					stations = mRemote.getStations();
@@ -107,9 +112,10 @@ public class RPCAsyncTasks{
 	 * 	See {@link PandoraRemote#partnerLogIn()}
 	 * @param taskClass
 	 */
-	public AsyncTask<Void, Progress, Void> partnerLogIn(final PostTask<Void> taskClass){
-		RPCAsyncTask<Void, Void> task = new RPCAsyncTask<Void, Void>(taskClass){
-			protected Void doInBackground(Void... params){
+	public AsyncTask<Void, Progress, Void> partnerLogIn(final PostTask<Void> taskClass) {
+		
+		RPCAsyncTask<Void, Void> task = new RPCAsyncTask<Void, Void>(taskClass) {
+			protected Void doInBackground(Void... params) {
 				try{
 					networkConnectWait();
 					mRemote.partnerLogIn();
@@ -135,6 +141,7 @@ public class RPCAsyncTasks{
 	public AsyncTask<Object, Progress, Long> rate(String trackToken, 
 			                                      boolean isRatingPositive, 
 			                                      final PostTask<Long> taskClass){
+		
 		RPCAsyncTask<Object, Long> task = new RPCAsyncTask<Object, Long>(taskClass){
 			protected Long doInBackground(Object... params){
 				String trackToken = (String) params[0];
@@ -176,6 +183,7 @@ public class RPCAsyncTasks{
 	public AsyncTask<String, Progress, Void> userLogIn(String user, 
 			                                           String password, 
 			                                           final PostTask<Void> taskClass){
+		
 		RPCAsyncTask<String, Void> task = new RPCAsyncTask<String, Void>(taskClass){
 			protected Void doInBackground(String... params) {
 				try {

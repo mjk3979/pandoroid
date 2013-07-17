@@ -20,9 +20,9 @@
  */
 package com.pandoroid.pandora.RPC;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Vector;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
@@ -43,8 +43,8 @@ import com.pandoroid.pandora.SubscriberTypeException;
  * Basic Call Order: 
  *  1) partnerLogIn();
  *  2) userLogIn(String username/email, String password);
- *  3) Vector<Station> yourStations = getStations();
- *  4) Vector<Song> playlist = getPlaylist(String userSelectedStationToken);
+ *  3) ArrayList<Station> yourStations = getStations();
+ *  4) ArrayList<Song> playlist = getPlaylist(String userSelectedStationToken);
  *  5) Others...
  *  
  * @author Dylan Powers <dylan.kyle.powers@gmail.com>
@@ -71,7 +71,7 @@ public class PandoraRemote extends JsonRPC{
 	 * Description: Disabled
 	 */
 	//public void bookmarkArtist(Station station, Song song) {
-		//Vector<Object> args = new Vector<Object>(1);
+		//ArrayList<Object> args = new ArrayList<Object>(1);
 		//args.add(song.getArtistMusicId());
 		
 		//doCall("station.createArtistBookmark", args, null);
@@ -81,7 +81,7 @@ public class PandoraRemote extends JsonRPC{
 	 * Description: Disabled
 	 */
 	//public void bookmarkSong(Station station, Song song) {
-//		Vector<Object> args = new Vector<Object>(2);
+//		ArrayList<Object> args = new ArrayList<Object>(2);
 //		args.add(String.valueOf(station.getId())); 
 //		args.add(song.getId());
 		
@@ -102,7 +102,7 @@ public class PandoraRemote extends JsonRPC{
 	 * @throws PandoraAPIException when an improper call has been made to the method.
 	 * @throws Exception when an unexpected fatal error occurs.
 	 */
-	public Vector<Song> getPlaylist(String stationToken) 
+	public ArrayList<Song> getPlaylist(String stationToken) 
 	                               throws RPCException,
 	                                      IOException,
 	                                      HttpResponseException,
@@ -127,9 +127,9 @@ public class PandoraRemote extends JsonRPC{
 		                                      requestArgs, 
 				                              true, true, null);
 		
-		Vector<Song> songs;
+		ArrayList<Song> songs;
 		try{
-			Vector<Object> songsReturned = keyGetCast(response, "items");
+			ArrayList<Object> songsReturned = keyGetCast(response, "items");
 			songs = parseItems(songsReturned);
 		}
 		catch(ClassCastException e){
@@ -157,7 +157,7 @@ public class PandoraRemote extends JsonRPC{
 	 * @throws Exception when a fatal error has occurred.
 	 */
 	@SuppressWarnings("unchecked")
-	public Vector<StationMetaInfo> getStations() throws RPCException,
+	public ArrayList<StationMetaInfo> getStations() throws RPCException,
 	                                            IOException,
 	                                            HttpResponseException, 
 	                                            PandoraAPIModifiedException,
@@ -174,9 +174,9 @@ public class PandoraRemote extends JsonRPC{
 		Map<String, Object> result = doCall("user.getStationList", requestArgs, 
 				                            false, true, null);
 		
-		Vector<StationMetaInfo> stations = new Vector<StationMetaInfo>();		
+		ArrayList<StationMetaInfo> stations = new ArrayList<StationMetaInfo>();		
 		try{
-			Vector<Object> resultStations = keyGetCast(result, "stations");
+			ArrayList<Object> resultStations = keyGetCast(result, "stations");
 	
 			//Run through the stations within the array, and pick out some of the
 			//properties we want.
@@ -238,17 +238,17 @@ public class PandoraRemote extends JsonRPC{
 	 * @throws ClassCastException if an object could not be cast to a particular type.
 	 */
 	@SuppressWarnings("unchecked")
-	private Vector<Song> parseItems(Vector<Object> items)
+	private ArrayList<Song> parseItems(ArrayList<Object> items)
 	                               throws PandoraAPIModifiedException, 
 	                                      ClassCastException{
-		Vector<Song> songs = new Vector<Song>();
+		ArrayList<Song> songs = new ArrayList<Song>();
 		
 		for (int i = 0; i < items.size(); ++i){
 			Map<String, Object> songData = (Map<String, Object>) items.get(i);
 			
 			if (songData.get("adToken") == null){
-				Vector<AudioUrl> audioUrlMappings = new Vector<AudioUrl>(4);				
-				Vector<String> audioUrls = keyGetCast(songData, 
+				ArrayList<AudioUrl> audioUrlMappings = new ArrayList<AudioUrl>(4);				
+				ArrayList<String> audioUrls = keyGetCast(songData, 
 						                              "additionalAudioUrl");
 				
 				//This has to be in the same order as the request.
@@ -352,7 +352,7 @@ public class PandoraRemote extends JsonRPC{
 	 * Description: Disabled
 	 */
 //	public void tired(Station station, Song song) {
-//		Vector<Object> args = new Vector<Object>(3);
+//		ArrayList<Object> args = new ArrayList<Object>(3);
 //		args.add(song.getId()); 
 //		//args.add(song.getUserSeed()); 
 //		args.add(String.valueOf(station.getId()));
