@@ -192,8 +192,8 @@ public class RPCAsyncTasks{
 	}
 
 	/**
-	 * Description: This is the class to implement so that async tasks can call
-	 * 	its member methods on post execution.
+	 * Description: This is the class to implement so that async tasks have
+	 * 	something to call when they complete.
 	 * 
 	 * @author Dylan Powers <dylan.kyle.powers@gmail.com>
 	 *
@@ -201,18 +201,32 @@ public class RPCAsyncTasks{
 	 * 	invoked.
 	 */
 	public abstract static class PostTask<ReturnType>{
+		
+		/**
+		 * Description: Gets called when an exception occurs.
+		 * @param e -The exception that was thrown.
+		 */
 		public abstract void onException(Exception e);
 		
 		/**
-		 * Description: Only called when execution successfully completed, and
-		 * 	no exceptions were thrown.
-		 * 
-		 * @param arg
+		 * Description: Called upon successful completion of the task.
+		 * @param arg -What is to be returned.
 		 */
-		public abstract void onPostExecute(ReturnType arg);
+		public abstract void onSuccess(ReturnType arg);
+
+		/**
+		 * Description: A method that always gets called at the end of a task.
+		 * 	This method is optional to implement.
+		 */
+		public void always() {}
 		
+		/**
+		 * Description: A method that gets called on progress updates. 
+		 * 	This method is optional to implement.
+		 * @param progress
+		 */
 		@SuppressWarnings("unused")
-		public void onProgressUpdate(Progress progress){} //Optional method
+		public void onProgressUpdate(Progress progress) {}
 	}
 	
 	/**
@@ -277,8 +291,9 @@ public class RPCAsyncTasks{
 				mTaskClass.onException(mCaughtException);
 			}
 			else{
-				mTaskClass.onPostExecute(ret);
+				mTaskClass.onSuccess(ret);
 			}
+			mTaskClass.always();
 		}	
 		
 		protected void onProgressUpdate(Progress prog){
