@@ -16,9 +16,9 @@
  */
 package com.pandoroid.playback;
 
-public abstract class OnErrorListener {
-	public abstract void onError(String error_message, 
-			                     Throwable e, 
-			                     boolean remote_error_flag,
-			                     int rpc_error_code);
+import com.pandoroid.pandora.RPC.RPCException;
+
+public interface OnErrorListener {
+	public void onError(Throwable e);
+	public void onRPCError(RPCException e);
 }

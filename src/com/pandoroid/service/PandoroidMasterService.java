@@ -53,6 +53,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.view.KeyEvent;
 
+import com.pandoroid.Callback;
 import com.pandoroid.pandora.Song;
 import com.pandoroid.pandora.StationMetaInfo;
 import com.pandoroid.pandora.SubscriberTypeException;
@@ -214,7 +215,7 @@ public class PandoroidMasterService extends Service {
 		mAudioManager.abandonAudioFocus(mAudioFocusChangeListener);
 	}
 	
-	private void dismissAlert(OnAlertListener.Alert alert) {
+	public void dismissAlert(OnAlertListener.Alert alert) {
 		if (alert.equals(mAlertStack.peekLast())) {
 			mAlertStack.pop();
 			mAlertCallback.onRemoveAlert();
@@ -236,9 +237,21 @@ public class PandoroidMasterService extends Service {
 		}
 	}
 	
+	//First call wins
 	private void executeSignIn(String username, String password) {
+		executeSignIn(username, password, 
+				      new Callback() { public void run() {} });
+	}
+	private void executeSignIn(String username, 
+			                   String password, 
+			                   final Callback onSuccess) {
 		if (!mRemote.isPartnerAuthorized()){
-			partnerAuthorization();
+			partnerAuthorization(new Callback() { 
+				public void run() {
+					signIn();
+					onSuccess.run();
+				}
+			});
 		}
 		else{
 			if (username != null && password != null){
@@ -254,15 +267,20 @@ public class PandoroidMasterService extends Service {
 							public void onException(Exception e) {
 								if (e instanceof SubscriberTypeException){
 									switchSubscriberTypes();
-								}
-								// TODO Auto-generated method stub							
+								} else if (e instanceof RPCException && 
+										   ((RPCException) e).getCode() == 
+										    RPCException.INVALID_USER_CREDENTIALS) {
+									raiseAlert(new Alert(ActionCode.SIGNING_IN,
+											             AlertCode.ERROR_INVALID_USER_CREDENTIALS));
+								} else {
+									raiseAlert(new Alert(ActionCode.SIGNING_IN,
+											             mRunningAsyncTasks.exceptionHandler(e)));
+								}						
 							}
 				
 							@Override
 							public void onSuccess(Void arg) {
-								// TODO Auto-generated method stub
-								//Set the station
-								
+								onSuccess.run();
 							}
 
 							@Override
@@ -281,7 +299,11 @@ public class PandoroidMasterService extends Service {
 		}
 	}
 	
-	private void fetchStations(){
+	//First call wins
+	private void fetchStations() {
+		fetchStations(new Callback() { public void run() {} });
+	}
+	private void fetchStations(final Callback onSuccess){
 		if (mRunningAsyncTasks.getStations == null){
 			final Alert stationsFetchAlert = new Alert(ActionCode.ACQUIRING_STATIONS, 
 					                                   AlertCode.RUNNING);
@@ -291,8 +313,15 @@ public class PandoroidMasterService extends Service {
 
 					@Override
 					public void onException(Exception e) {
-						// TODO Auto-generated method stub
-						
+						if (e instanceof RPCException &&
+							((RPCException) e).getCode() == 
+							RPCException.INVALID_AUTH_TOKEN) {
+							signIn(new Callback() {
+								public void run() {
+									fetchStations(onSuccess);
+								}
+							});
+						}
 					}
 	
 					@Override
@@ -322,6 +351,7 @@ public class PandoroidMasterService extends Service {
 										             AlertCode.ERROR_MISSING_STATION_SELECTION));
 							}
 						}
+						onSuccess.run();
 					}
 
 					@Override
@@ -348,8 +378,7 @@ public class PandoroidMasterService extends Service {
 			return new ArrayList<StationMetaInfo>();
 		}
 		else{
-			//TODO: Change all vectors to arrayList
-			return new ArrayList<StationMetaInfo>();//mTuner.getStations();
+			return mTuner.getStations();
 		}
 	}
 	
@@ -381,8 +410,10 @@ public class PandoroidMasterService extends Service {
 //	startForeground(NOTIFICATION_SONG_PLAYING, notification);
 	}
 	
-	
 	private void partnerAuthorization() {
+		partnerAuthorization(new Callback() { public void run() {} });
+	}
+	private void partnerAuthorization(final Callback onSuccess) {
 		if (mRunningAsyncTasks.partnerLogIn == null) {
 			final Alert signInAlert = new Alert(ActionCode.SIGNING_IN, 
                     AlertCode.RUNNING);
@@ -396,7 +427,7 @@ public class PandoroidMasterService extends Service {
 									RPCException.INVALID_PARTNER_CREDENTIALS) {
 							raiseAlert(new Alert(ActionCode.SIGNING_IN,
 									             AlertCode.ERROR_UNSUPPORTED_API));
-							Log.e(TAG, "Invalid partner credentials");
+							Log.i(TAG, "Invalid partner credentials");
 						} else {
 							raiseAlert(new Alert(ActionCode.SIGNING_IN,
 									             mRunningAsyncTasks.exceptionHandler(e)));
@@ -405,7 +436,7 @@ public class PandoroidMasterService extends Service {
 		
 					@Override
 					public void onSuccess(Void arg) {
-						signIn();
+						onSuccess.run();
 					}
 
 					@Override
@@ -438,10 +469,14 @@ public class PandoroidMasterService extends Service {
 	public void play() {
 		mSet2PlayFlag = true;
 		if (!mRemote.isUserAuthorized()){
-			signIn();
+			signIn(new Callback() {
+				public void run() {
+					fetchStations();
+				}
+			});
 		}		
-		else if (mCurrentStation != null){
-			mCurrentStation.play();
+		else if (mCurrentStation == null){
+			fetchStations();
 		} else {		
 			if (requestAudioFocus()) {
 				mCurrentStation.play();
@@ -474,8 +509,12 @@ public class PandoroidMasterService extends Service {
 		}
 	}
 
-	
-	public void rate(String trackToken, boolean isRatingPositive) {
+	public void rate(final String trackToken, final boolean isRatingPositive) {
+		rate(trackToken, isRatingPositive, 
+		     new Callback() { public void run() {} });
+	}
+	public void rate(final String trackToken, final boolean isRatingPositive, 
+			         final Callback onSuccess) {
 		final Alert ratingAlert = new Alert(ActionCode.RATING, AlertCode.RUNNING);
 		raiseAlert(ratingAlert);
 		mPandoraRPCAsync.rate(trackToken, 
@@ -484,13 +523,21 @@ public class PandoroidMasterService extends Service {
 
 			@Override
 			public void onException(Exception e) {
-				// TODO Auto-generated method stub
-				
+				if (e instanceof RPCException &&
+					((RPCException) e).getCode() == 
+					RPCException.INVALID_AUTH_TOKEN) {
+					signIn(new Callback() {
+						public void run() {
+							rate(trackToken, isRatingPositive, onSuccess);
+						}
+					});
+				}
 			}
 
 			@Override
 			public void onSuccess(Long arg) {
 				// TODO Auto-generated method stub
+				onSuccess.run();
 			}
 
 			@Override
@@ -538,6 +585,31 @@ public class PandoroidMasterService extends Service {
 		return result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
 	}
 	
+	private void resetPandoraRemote() {
+		if (mRunningAsyncTasks.partnerLogIn != null){
+			mRunningAsyncTasks.partnerLogIn.cancel(true);
+			mRunningAsyncTasks.partnerLogIn = null;
+		}		
+		if (mRunningAsyncTasks.userLogIn != null){
+			mRunningAsyncTasks.userLogIn.cancel(true);
+			mRunningAsyncTasks.userLogIn = null;
+		}
+		if (mRunningAsyncTasks.getStations != null){
+			mRunningAsyncTasks.getStations.cancel(true);
+			mRunningAsyncTasks.getStations = null;
+		}
+		
+		try {
+			mRemote = new PandoraRemote(mPrefs.getPandoraOneFlag(), USER_AGENT);
+			mPandoraRPCAsync.setRemote(mRemote);
+		} catch (GeneralSecurityException e) {
+			Log.e(TAG, 
+				  "A fatal exception occurred while initializing the " +
+			      "PandoraRemote",
+				  e);
+			raiseAlert(new Alert(ActionCode.FATAL, AlertCode.ERROR_APPLICATION));
+		}
+	}
 	
 	
 	public void setCurrentStation(String stationToken) {
@@ -545,7 +617,6 @@ public class PandoroidMasterService extends Service {
 			mCurrentStation = mTuner.changeStations(stationToken);
 			mPrefs.setLastStationToken(stationToken);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block			e.printStackTrace();
 			raiseAlert(new Alert(ActionCode.FATAL,
 					             AlertCode.ERROR_APPLICATION));
 		}
@@ -586,10 +657,13 @@ public class PandoroidMasterService extends Service {
 	 * 	password.
 	 */
 	private void signIn(){
+		signIn(new Callback() { public void run() {} });
+	}
+	private void signIn(Callback onSuccess) {
 		String username = mPrefs.getUsername();
 		String password = mPrefs.getPassword();
 		
-		executeSignIn(username, password);
+		executeSignIn(username, password, onSuccess);
 	}
 	
 	public void signOut() {
@@ -600,34 +674,13 @@ public class PandoroidMasterService extends Service {
 		mPrefs.removeUsername();
 		
 		//Now kill the currently running processes
-		if (mRunningAsyncTasks.partnerLogIn != null){
-			mRunningAsyncTasks.partnerLogIn.cancel(true);
-		}		
-		if (mRunningAsyncTasks.userLogIn != null){
-			mRunningAsyncTasks.userLogIn.cancel(true);
-		}
-		if (mRunningAsyncTasks.getStations != null){
-			mRunningAsyncTasks.getStations.cancel(true);
-		}
 		stop();
 		mTuner.killAll();
 		
 		//Lastly, reset everything to their default states
-		mRunningAsyncTasks.partnerLogIn = null;
-		mRunningAsyncTasks.userLogIn = null;
-		mRunningAsyncTasks.getStations = null;
 		mTuner = null;
 		mCurrentStation = null;
-		try {
-			mRemote = new PandoraRemote(mPrefs.getPandoraOneFlag(), USER_AGENT);
-			mPandoraRPCAsync.setRemote(mRemote);
-		} catch (GeneralSecurityException e) {
-			Log.e(TAG, 
-				  "A fatal exception occurred while initializing the " +
-			      "PandoraRemote during signOut",
-				  e);
-			raiseAlert(new Alert(ActionCode.FATAL, AlertCode.ERROR_APPLICATION));
-		}
+		resetPandoraRemote();
 	}
 	
 	public void skip(){
@@ -646,16 +699,7 @@ public class PandoroidMasterService extends Service {
 		}
 		else{
 			mPrefs.setPandoraOneFlag(true);
-			try {
-				mRemote = new PandoraRemote(true, USER_AGENT);
-				mPandoraRPCAsync.setRemote(mRemote);
-			} catch (GeneralSecurityException e) {
-				Log.e(TAG, 
-					  "A fatal exception occurred while initializing the " +
-				      "PandoraRemote during switchSubscriberTypes",
-					  e);
-				raiseAlert(new Alert(ActionCode.FATAL, AlertCode.ERROR_APPLICATION));
-			}
+			resetPandoraRemote();
 		}
 	}
 	
@@ -714,21 +758,16 @@ public class PandoroidMasterService extends Service {
 		}		
 	}
 	
-	public class PlaybackOnErrorListener extends com.pandoroid.playback.OnErrorListener{
-		public void onError(String error_message, 
-                			Throwable e, 
-            				boolean remote_error_flag,
-            				int rpc_error_code){
-//			if (remote_error_flag){
-//				if (rpc_error_code == RPCException.INVALID_AUTH_TOKEN){
-//					m_pandora_remote.disconnect();
-//					OnInvalidAuthListener 
-//						listener = (OnInvalidAuthListener) listeners.get(OnInvalidAuthListener.class);
-//					if (listener != null){
-//						listener.onInvalidAuth();
-//					}
-//				}
-//			}			
+	public class PlaybackOnErrorListener implements com.pandoroid.playback.OnErrorListener{
+		public void onError(Throwable e){
+			raiseAlert(new Alert(ActionCode.FATAL, AlertCode.ERROR_APPLICATION));
+			Log.e(TAG, "A playback error occurred", e);	
+		}
+		
+		public void onRPCError(RPCException e) {
+			if (e.getCode() == RPCException.INVALID_AUTH_TOKEN){
+				signIn();
+			}
 		}
 	}
 	

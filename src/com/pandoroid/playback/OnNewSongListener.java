@@ -22,6 +22,6 @@ import com.pandoroid.pandora.Song;
  * Description: An abstract class for an OnNewSongListener.
  * @author Dylan Powers <dylan.kyle.powers@gmail.com>
  */
-public abstract class OnNewSongListener {
-	public abstract void onNewSong(Song song);
+public interface OnNewSongListener {
+	public void onNewSong(Song song);
 }
