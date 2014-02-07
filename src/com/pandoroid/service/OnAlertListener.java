@@ -27,7 +27,11 @@ public interface OnAlertListener {
 		ERROR_REMOTE_SERVER,
 		ERROR_UNKNOWN,
 		ERROR_UNSUPPORTED_API,
-		ERROR_WAN
+		ERROR_WAN,
+		
+		PLAYBACK_BUFFERING,
+		PLAYBACK_PREPARING,
+		PLAYBACK_FETCHING_SONGS
 	}
 	
 	public static class Alert {

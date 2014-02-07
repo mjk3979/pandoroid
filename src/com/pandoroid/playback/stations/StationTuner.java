@@ -10,7 +10,6 @@ import com.pandoroid.pandora.StationMetaInfo;
 import com.pandoroid.playback.OnErrorListener;
 import com.pandoroid.playback.OnNewSongListener;
 import com.pandoroid.playback.OnPlaybackStateChangedListener;
-import com.pandoroid.playback.OnRPCErrorListener;
 import com.pandoroid.service.RPCAsyncTasks;
 
 /**
@@ -23,17 +22,17 @@ public class StationTuner {
 
 	private RPCAsyncTasks mAsyncRpc;
 	private StationPlayer mCurrentStation;
-	private OnRPCErrorListener mErrorListener;
+	private OnErrorListener mErrorListener;
 	private ArrayList<StationMetaInfo> mMetaInfo;
 	private OnNewSongListener mNewSongListener;
 	private OnPlaybackStateChangedListener mPlayStateListener;
 	private Map<String, StationPlayer> mStations;	
 	
 	public StationTuner(ArrayList<StationMetaInfo> stations, 
-	                       RPCAsyncTasks asyncRpc,
-	                       OnPlaybackStateChangedListener pStateChangedListener,
-	                       OnNewSongListener newSongListener,
-	                       OnRPCErrorListener errorListener){
+	                    RPCAsyncTasks asyncRpc,
+	                    OnPlaybackStateChangedListener pStateChangedListener,
+	                    OnNewSongListener newSongListener,
+	                    OnErrorListener errorListener){
 		mAsyncRpc = asyncRpc;
 		mErrorListener = errorListener;
 		mMetaInfo = stations;
