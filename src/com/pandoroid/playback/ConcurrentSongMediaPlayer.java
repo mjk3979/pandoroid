@@ -12,7 +12,7 @@ public class ConcurrentSongMediaPlayer{
 	
 	//A constant for setting the percentage of a song's total length that needs
 	//to be played before it is determined as being effectively finished.
-	public static final int MINIMUM_SONG_COMPLETENESS = 95;
+	public static final int MINIMUM_SONG_COMPLETENESS = 90;
 	
 	public volatile Boolean m_buffer_complete_flag = false;
 	
