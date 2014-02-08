@@ -154,14 +154,17 @@ public class ConcurrentSongMediaPlayer{
 	 * @return A boolean of true if it's complete, else false.
 	 */
 	public boolean isPlaybackComplete(){
-		int song_length = getDuration();
-		int current_pos = getCurrentPosition();
 		
-		double end_song_position = song_length * (MINIMUM_SONG_COMPLETENESS / 100F);
-		
-		if (current_pos < end_song_position){
-			return false;
-		}
+		// The Android API's are borked in KitKat. It's better to simply not 
+		// bother with it.
+//		int song_length = getDuration();
+//		int current_pos = getCurrentPosition();
+//		
+//		double end_song_position = song_length * (MINIMUM_SONG_COMPLETENESS / 100F);
+//		
+//		if (current_pos < end_song_position){
+//			return false;
+//		}
 		
 		return true;
 	}
