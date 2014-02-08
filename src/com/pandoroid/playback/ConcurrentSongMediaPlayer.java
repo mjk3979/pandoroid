@@ -157,12 +157,9 @@ public class ConcurrentSongMediaPlayer{
 		int song_length = getDuration();
 		int current_pos = getCurrentPosition();
 		
-		int end_song_position = (int) ((song_length - 
-				                        (
-					song_length * ((float) 1F/MINIMUM_SONG_COMPLETENESS)
-				                        )) / 1000F);
+		double end_song_position = song_length * (MINIMUM_SONG_COMPLETENESS / 100F);
 		
-		if ((current_pos / 1000) < end_song_position){
+		if (current_pos < end_song_position){
 			return false;
 		}
 		

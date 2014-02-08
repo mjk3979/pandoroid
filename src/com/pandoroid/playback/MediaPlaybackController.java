@@ -1002,6 +1002,7 @@ public class MediaPlaybackController implements Runnable{
 	 */
 	private class MediaCompletionListener implements MediaPlayer.OnCompletionListener{
 		public void onCompletion(MediaPlayer mp){
+			m_valid_play_command_flag = false;
 			Thread t = new Thread(new Runnable(){
 				public void run(){
 					if (m_active_player.isPlaybackComplete()){
@@ -1011,6 +1012,7 @@ public class MediaPlaybackController implements Runnable{
 						sendPlaybackHaltedNotification(HALT_STATE_BUFFERING);
 						m_reset_player_flag = true;
 					}
+					m_valid_play_command_flag = true;
 					m_playback_engine_thread.interrupt();
 				}
 			});
