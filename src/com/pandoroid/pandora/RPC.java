@@ -125,20 +125,20 @@ public class RPC {
 		
 		//Check the entity type (usually 'text/plain'). Probably doesn't need
 		//to be checked.
-		if (response_entity.getContentType().getValue().equals(entity_type)){			
-			InputStream content = response_entity.getContent();
-			int bytes_read = BUFFER_BYTE_SIZE;
-			
-			//Rather than read an arbitrary amount of bytes, lets be sure to get
-			//it all.
-			while((bytes_read = content.read(bytes, 0, BUFFER_BYTE_SIZE)) != -1){				
-				ret_data += new String(bytes, 0, bytes_read);
-			}
+//		if (response_entity.getContentType().getValue().equals(entity_type)){			
+		InputStream content = response_entity.getContent();
+		int bytes_read = BUFFER_BYTE_SIZE;
+		
+		//Rather than read an arbitrary amount of bytes, lets be sure to get
+		//it all.
+		while((bytes_read = content.read(bytes, 0, BUFFER_BYTE_SIZE)) != -1){				
+			ret_data += new String(bytes, 0, bytes_read);
 		}
-		else{
-			throw new Exception("Improper server response entity type: " + 
-								response_entity.getContentType().getValue());
-		}
+//		}
+//		else{
+//			throw new Exception("Improper server response entity type: " + 
+//								response_entity.getContentType().getValue());
+//		}
 		
 		return ret_data;
 	}
