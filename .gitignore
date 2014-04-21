@@ -3,6 +3,9 @@ bin/*
 hs_err_pid*.log
 R.java
 consoleTesting
+build.xml
+local.properties
+proguard-project.txt
 
 # The gen/ directory should be ignored as everything there is automatically generated.
 gen/
